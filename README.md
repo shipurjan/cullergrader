@@ -138,7 +138,7 @@ Best takes can be exported to a folder using `File > Export Best Takes` or with 
 | `TIME_THRESHOLD_SECONDS`       | The default amount of seconds between photos (from the timestamp) before they're counted as a new group. Editable in-app, but will not change the default stored here                                                                      | `float`       |
 | `SIMILARITY_THRESHOLD_PERCENT` | The default similarity between two photo hashes before they're counted as a new group. Higher values means more lenience in image similarity (larger groups, less in number). Editable in-app, but will not change the default stored here | `float`       |
 
-Note: More config options are technically functional, such as `PLACEHOLDER_THUMBNAIL_PATH`, `KEYBIND_SET_BESTTAKE`, or `GRIDMEDIA_LABEL_TEXT_COLOR`, but are not documented here and aren't editagble by default due to their configurability not significantly impacting program function. Users are free to explore the source code and add these into `config.json` themselves, and they should work as intended. 
+Note: More config options are technically functional, such as `PLACEHOLDER_THUMBNAIL_PATH`, `KEYBIND_SET_BESTTAKE`, or `GRIDMEDIA_LABEL_TEXT_COLOR`, but are not documented here and aren't editable by default due to their configurability not significantly impacting program function. Users are free to explore the source code and add these into `config.json` themselves, and they should work as intended. 
 
 ## Contributing
 Contributions to Cullergrader are **greatly appreciated**, as a tool made from one photographer to another, the best way Cullergrader can improve is through continued feedback and contributions.
