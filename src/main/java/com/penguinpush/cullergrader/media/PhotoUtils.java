@@ -14,43 +14,63 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.imageio.*;
 import javax.imageio.stream.ImageInputStream;
 import javax.swing.*;
 
 public class PhotoUtils {
 
-    // LRU cache for all image previews (strong references to avoid GC under memory pressure)
+    // Simple fill-until-full cache for all image previews (strong references to avoid GC under memory pressure)
     // Caches SCALED previews at display resolution (240×160 default)
     // Cache size configured via IMAGE_PREVIEW_CACHE_SIZE_MB in config.json (default 1024 MB)
-    private static final int MAX_CACHE_SIZE = calculateMaxCacheSize();
+    private static final long MAX_CACHE_SIZE_BYTES = AppConstants.IMAGE_PREVIEW_CACHE_SIZE_MB * 1024L * 1024L;
+    private static long currentCacheSizeBytes = 0;
 
-    private static int calculateMaxCacheSize() {
-        int cacheSizeMB = AppConstants.IMAGE_PREVIEW_CACHE_SIZE_MB;
-        long cacheSizeKB = cacheSizeMB * 1024L;
-        // Average 240×160 RGB image is approximately 115 KB
-        // Integer division: number of entries that fit in the cache
-        return Math.max(100, (int) (cacheSizeKB / 115));  // Minimum 100 entries
-    }
+    // Hit/miss tracking for monitoring cache effectiveness
+    private static final AtomicLong cacheHits = new AtomicLong(0);
+    private static final AtomicLong cacheMisses = new AtomicLong(0);
+
+    // Simple fill-until-full cache with no eviction
     private static final Map<String, ImagePreviewEntry> imagePreviewCache =
-        Collections.synchronizedMap(new LinkedHashMap<String, ImagePreviewEntry>(16, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, ImagePreviewEntry> eldest) {
-                boolean shouldRemove = size() > MAX_CACHE_SIZE;
-                if (shouldRemove) {
-                    logToConsoleOnly("Image preview cache full, evicting: " + eldest.getKey());
-                }
-                return shouldRemove;
-            }
-        });
+        Collections.synchronizedMap(new LinkedHashMap<String, ImagePreviewEntry>(16, 0.75f, false));
 
     private static class ImagePreviewEntry {
         final long lastModified;
         final BufferedImage preview;  // Strong reference (no SoftReference)
+        final long sizeBytes;
 
         ImagePreviewEntry(long lastModified, BufferedImage preview) {
             this.lastModified = lastModified;
             this.preview = preview;
+            // Calculate actual byte size: width × height × bytes per pixel
+            // TYPE_INT_RGB = 4 bytes per pixel, TYPE_3BYTE_BGR = 3 bytes per pixel, etc.
+            int bytesPerPixel;
+            switch (preview.getType()) {
+                case BufferedImage.TYPE_INT_RGB:
+                case BufferedImage.TYPE_INT_ARGB:
+                case BufferedImage.TYPE_INT_ARGB_PRE:
+                case BufferedImage.TYPE_INT_BGR:
+                    bytesPerPixel = 4;
+                    break;
+                case BufferedImage.TYPE_3BYTE_BGR:
+                    bytesPerPixel = 3;
+                    break;
+                case BufferedImage.TYPE_USHORT_565_RGB:
+                case BufferedImage.TYPE_USHORT_555_RGB:
+                case BufferedImage.TYPE_USHORT_GRAY:
+                    bytesPerPixel = 2;
+                    break;
+                case BufferedImage.TYPE_BYTE_GRAY:
+                case BufferedImage.TYPE_BYTE_BINARY:
+                case BufferedImage.TYPE_BYTE_INDEXED:
+                    bytesPerPixel = 1;
+                    break;
+                default:
+                    // For custom or unknown types, estimate 4 bytes per pixel
+                    bytesPerPixel = 4;
+            }
+            this.sizeBytes = preview.getWidth() * preview.getHeight() * bytesPerPixel;
         }
     }
 
@@ -61,6 +81,7 @@ public class PhotoUtils {
         // Check cache first (for ALL file types - RAW, JPEG, PNG, etc.)
         ImagePreviewEntry entry = imagePreviewCache.get(path);
         if (entry != null && entry.lastModified == lastModified) {
+            cacheHits.incrementAndGet();  // Track cache hit
             logToConsoleOnly("Retrieved cached preview: " + file.getName());
             return scalePreviewIfNeeded(entry.preview, targetWidth, targetHeight);
         }
@@ -89,10 +110,19 @@ public class PhotoUtils {
         int cacheHeight = AppConstants.THUMBNAIL_ICON_HEIGHT;
         BufferedImage cachedPreview = scalePreviewIfNeeded(fullImage, cacheWidth, cacheHeight);
 
-        // Store at display resolution
-        imagePreviewCache.put(path, new ImagePreviewEntry(lastModified, cachedPreview));
+        // Store at display resolution (only if space available)
+        ImagePreviewEntry newEntry = new ImagePreviewEntry(lastModified, cachedPreview);
 
-        logToConsoleOnly("Cached preview for: " + file.getName());
+        // Simple fill-until-full: only cache if we have space
+        if (currentCacheSizeBytes + newEntry.sizeBytes <= MAX_CACHE_SIZE_BYTES) {
+            imagePreviewCache.put(path, newEntry);
+            currentCacheSizeBytes += newEntry.sizeBytes;
+            logToConsoleOnly("Cached preview for: " + file.getName());
+        } else {
+            logToConsoleOnly("Cache full, not caching: " + file.getName());
+        }
+
+        cacheMisses.incrementAndGet();  // Track cache miss
 
         // Return scaled to requested size (e.g., 8×8 for hashing, 240×160 for display)
         return scalePreviewIfNeeded(cachedPreview, targetWidth, targetHeight);
@@ -297,10 +327,17 @@ public class PhotoUtils {
     }
 
     /**
-     * Returns the maximum image preview cache size (LRU limit).
+     * Returns the current cache size in bytes.
      */
-    public static int getImagePreviewCacheMaxSize() {
-        return MAX_CACHE_SIZE;
+    public static long getCurrentCacheSizeBytes() {
+        return currentCacheSizeBytes;
+    }
+
+    /**
+     * Returns the maximum image preview cache size in bytes.
+     */
+    public static long getImagePreviewCacheMaxSizeBytes() {
+        return MAX_CACHE_SIZE_BYTES;
     }
 
     /**
@@ -310,6 +347,8 @@ public class PhotoUtils {
     public static void clearImagePreviewCache() {
         int size = imagePreviewCache.size();
         imagePreviewCache.clear();
+        currentCacheSizeBytes = 0;
         logMessage("Cleared image preview cache (" + size + " entries)");
     }
+
 }
