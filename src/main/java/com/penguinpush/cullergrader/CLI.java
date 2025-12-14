@@ -114,7 +114,6 @@ public class CLI {
                 }
                 outputPath = args[++i];
             }
-
             // JSON export path
             else if (arg.equals("--json") || arg.equals("-j")) {
                 if (i + 1 >= args.length) {
@@ -123,7 +122,6 @@ public class CLI {
                 }
                 jsonPath = args[++i];
             }
-
             // Time threshold
             else if (arg.equals("--time") || arg.equals("-t")) {
                 if (i + 1 >= args.length) {
@@ -222,7 +220,6 @@ public class CLI {
             FileUtils.exportGroupsJson(groups, jsonFile, timeThreshold, similarityThreshold);
             System.out.println();
         }
-
 
         // Export or preview
         if (previewMode) {

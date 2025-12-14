@@ -26,13 +26,11 @@ Cullergrader is named for being a tool that culls and grades* photos. Please not
 4. [Config](#config)
    1. [Default Config](#default-config)
    2. [Config Settings Explained](#config-settings-explained)
-5. [Performance Tuning](#performance-tuning)
-6. [Contributing](#contributing)
-7. [License](#license)
+5. [Contributing](#contributing)
+6. [License](#license)
 
 ## Features
 - 100% free and open-source!
-- Experimental RAW image format support - works with most camera RAW files that contain an embedded JPEG preview
 - Configurable options for calibrating your perceptual hash
     - Hash similarity
     - Timestamp difference
@@ -50,7 +48,7 @@ Cullergrader is named for being a tool that culls and grades* photos. Please not
     - Cache options
     - Grouping settings
     - Dark theme
-
+      
 ![images/group_viewer.png](images/group_viewer.png)
 
 
@@ -160,9 +158,6 @@ java -jar cullergrader.jar -i ~/photos/vacation -o ~/photos/best --json ~/photos
 ```
 
 ## Config
-
-Configuration is **optional**. Cullergrader includes sensible defaults for all settings. To customize, create a `config.json` file in the same directory as the executable.
-
 ### Default Config
 ```json
 {
@@ -176,8 +171,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
     "HASHED_WIDTH": 8,
     "HASHED_HEIGHT": 8,
     "TIME_THRESHOLD_SECONDS": 15,
-    "SIMILARITY_THRESHOLD_PERCENT": 45,
-    "IMAGE_PREVIEW_CACHE_SIZE_MB": 1024
+    "SIMILARITY_THRESHOLD_PERCENT": 45
 }
 ```
 
@@ -195,36 +189,8 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
 | `HASHED_HEIGHT`                | The height that images are computed at before hashing, higher values mean more accurate similarity checks at the cost of performance                                                                                                       | `int`         |
 | `TIME_THRESHOLD_SECONDS`       | The default amount of seconds between photos (from the timestamp) before they're counted as a new group. Editable in-app, but will not change the default stored here                                                                      | `float`       |
 | `SIMILARITY_THRESHOLD_PERCENT` | The default similarity between two photo hashes before they're counted as a new group. Higher values means more lenience in image similarity (larger groups, less in number). Editable in-app, but will not change the default stored here | `float`       |
-| `IMAGE_PREVIEW_CACHE_SIZE_MB`  | Maximum memory (in megabytes) to use for caching image previews. Default 1024 MB (1 GB). Increase for large photo shoots (see Performance Tuning section)                                                                                  | `int`         |
 
-Note: More config options are technically functional, such as `PLACEHOLDER_THUMBNAIL_PATH`, `KEYBIND_SET_BESTTAKE`, or `GRIDMEDIA_LABEL_TEXT_COLOR`, but are not documented here and aren't editable by default due to their configurability not significantly impacting program function. Users are free to explore the source code and add these into `config.json` themselves, and they should work as intended.
-
-## Performance Tuning
-
-For large photo shoots, you can increase the image preview cache size in `config.json`:
-
-```json
-{
-  "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
-}
-```
-
-**Default:** 2048 MB (2 GB)
-
-The preview cache stores scaled thumbnails (240×160) for all image files in memory to avoid re-reading from disk. The cache fills until reaching the configured limit, then stops caching new entries (no eviction).
-
-**Configuration examples:**
-- 512 MB = Smaller cache for limited memory systems
-- 1024 MB = Moderate cache for typical photo shoots
-- 2048 MB = Default (recommended for most users)
-- 4096 MB = Very large photo shoots (4000+ files)
-
-The cache applies to all image formats (JPEG, PNG, RAW, etc.) and significantly improves performance when:
-- Changing grouping thresholds
-- Reloading groups
-- Scrolling through large photo sets
-
-The cache clears automatically when loading a new directory.
+Note: More config options are technically functional, such as `PLACEHOLDER_THUMBNAIL_PATH`, `KEYBIND_SET_BESTTAKE`, or `GRIDMEDIA_LABEL_TEXT_COLOR`, but are not documented here and aren't editable by default due to their configurability not significantly impacting program function. Users are free to explore the source code and add these into `config.json` themselves, and they should work as intended. 
 
 ## Contributing
 Contributions to Cullergrader are **greatly appreciated**, as a tool made from one photographer to another, the best way Cullergrader can improve is through continued feedback and contributions.
