@@ -125,7 +125,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
     "HASHED_HEIGHT": 8,
     "TIME_THRESHOLD_SECONDS": 15,
     "SIMILARITY_THRESHOLD_PERCENT": 45,
-    "IMAGE_PREVIEW_CACHE_SIZE_MB": 1024
+    "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
 }
 ```
 
@@ -143,7 +143,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
 | `HASHED_HEIGHT`                | The height that images are computed at before hashing, higher values mean more accurate similarity checks at the cost of performance                                                                                                       | `int`         |
 | `TIME_THRESHOLD_SECONDS`       | The default amount of seconds between photos (from the timestamp) before they're counted as a new group. Editable in-app, but will not change the default stored here                                                                      | `float`       |
 | `SIMILARITY_THRESHOLD_PERCENT` | The default similarity between two photo hashes before they're counted as a new group. Higher values means more lenience in image similarity (larger groups, less in number). Editable in-app, but will not change the default stored here | `float`       |
-| `IMAGE_PREVIEW_CACHE_SIZE_MB`  | Maximum memory (in megabytes) to use for caching image previews. Default 1024 MB (1 GB). Increase for large photo shoots (see Performance Tuning section)                                                                                  | `int`         |
+| `IMAGE_PREVIEW_CACHE_SIZE_MB`  | Maximum memory (in megabytes) to use for caching image previews. Default 2048 MB (2 GB). Increase for very large photo shoots (see Performance Tuning section)                                                                             | `int`         |
 
 Note: More config options are technically functional, such as `PLACEHOLDER_THUMBNAIL_PATH`, `KEYBIND_SET_BESTTAKE`, or `GRIDMEDIA_LABEL_TEXT_COLOR`, but are not documented here and aren't editable by default due to their configurability not significantly impacting program function. Users are free to explore the source code and add these into `config.json` themselves, and they should work as intended.
 
