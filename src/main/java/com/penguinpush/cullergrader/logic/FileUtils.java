@@ -107,10 +107,12 @@ public class FileUtils {
             groupMap.put("groupIndex", group.getIndex());
             groupMap.put("photoCount", group.getSize());
 
-            Photo bestTake = group.getBestTake();
-            if (bestTake != null) {
-                groupMap.put("bestTakeFilename", bestTake.getFile().getName());
+            Set<Photo> selectedTakes = group.getSelectedTakes();
+            List<String> selectedFilenames = new ArrayList<>();
+            for (Photo photo : selectedTakes) {
+                selectedFilenames.add(photo.getFile().getName());
             }
+            groupMap.put("selectedTakes", selectedFilenames);
 
             List<Map<String, Object>> photosList = new ArrayList<>();
             for (Photo photo : group.getPhotos()) {
@@ -119,7 +121,7 @@ public class FileUtils {
                 photoMap.put("path", photo.getPath());
                 photoMap.put("timestamp", photo.getTimestamp());
                 photoMap.put("hash", photo.getHash());
-                photoMap.put("isBestTake", photo.isBestTake());
+                photoMap.put("isSelected", photo.isSelected());
 
                 List<Float> metrics = photo.getMetrics();
                 if (metrics.size() >= 2) {

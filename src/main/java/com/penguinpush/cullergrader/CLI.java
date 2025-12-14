@@ -6,6 +6,7 @@ import com.penguinpush.cullergrader.config.AppConstants;
 
 import java.io.File;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Command-line interface for Cullergrader.
@@ -226,17 +227,21 @@ public class CLI {
 
         // Export or preview
         if (previewMode) {
-            System.out.println("Preview - Best takes that would be exported:");
+            System.out.println("Preview - Selected takes that would be exported:");
             System.out.println("--------------------------------------------");
+            int totalSelected = 0;
             for (int i = 0; i < groups.size(); i++) {
                 PhotoGroup group = groups.get(i);
-                Photo bestTake = group.getBestTake();
-                if (bestTake != null) {
-                    System.out.println("[Group " + i + "] " + bestTake.getFile().getName());
+                Set<Photo> selectedTakes = group.getSelectedTakes();
+                if (!selectedTakes.isEmpty()) {
+                    for (Photo photo : selectedTakes) {
+                        System.out.println("[Group " + i + "] " + photo.getFile().getName());
+                        totalSelected++;
+                    }
                 }
             }
             System.out.println();
-            System.out.println("To export these " + groups.size() + " files, run again with --output <path>");
+            System.out.println("To export these " + totalSelected + " files, run again with --output <path>");
         } else {
             System.out.println("Exporting best takes to: " + outputFolder.getAbsolutePath());
             FileUtils.exportBestTakes(groups, outputFolder);
