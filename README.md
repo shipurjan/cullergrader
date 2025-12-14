@@ -157,14 +157,14 @@ For large photo shoots, you can increase the image preview cache size in `config
 }
 ```
 
-**Default:** 1024 MB (1 GB)
+**Default:** 2048 MB (2 GB)
 
-The preview cache stores scaled thumbnails (240×160) for all image files in memory to avoid re-reading from disk.
+The preview cache stores scaled thumbnails (240×160) for all image files in memory to avoid re-reading from disk. The cache fills until reaching the configured limit, then stops caching new entries (no eviction).
 
 **Configuration examples:**
 - 512 MB = Smaller cache for limited memory systems
-- 1024 MB = Default (recommended for most users)
-- 2048 MB = Large photo shoots (2000+ files)
+- 1024 MB = Moderate cache for typical photo shoots
+- 2048 MB = Default (recommended for most users)
 - 4096 MB = Very large photo shoots (4000+ files)
 
 The cache applies to all image formats (JPEG, PNG, RAW, etc.) and significantly improves performance when:
@@ -172,7 +172,7 @@ The cache applies to all image formats (JPEG, PNG, RAW, etc.) and significantly 
 - Reloading groups
 - Scrolling through large photo sets
 
-The cache automatically evicts the least recently used entries when the memory limit is reached.
+The cache clears automatically when loading a new directory.
 
 ## Contributing
 Contributions to Cullergrader are **greatly appreciated**, as a tool made from one photographer to another, the best way Cullergrader can improve is through continued feedback and contributions.
