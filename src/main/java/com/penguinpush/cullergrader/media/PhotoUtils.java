@@ -1,13 +1,18 @@
 package com.penguinpush.cullergrader.media;
 
 import static com.penguinpush.cullergrader.utils.Logger.logMessage;
+import static com.penguinpush.cullergrader.utils.Logger.logToConsoleOnly;
 
+import com.penguinpush.cullergrader.config.AppConstants;
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
+import com.drew.metadata.exif.ExifThumbnailDirectory;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.RandomAccessFile;
 import java.util.*;
 import javax.imageio.*;
 import javax.imageio.stream.ImageInputStream;
@@ -15,34 +20,188 @@ import javax.swing.*;
 
 public class PhotoUtils {
 
+    // LRU cache for all image previews (strong references to avoid GC under memory pressure)
+    // Caches SCALED previews at display resolution (240×160 default)
+    // Cache size configured via IMAGE_PREVIEW_CACHE_SIZE_MB in config.json (default 1024 MB)
+    private static final int MAX_CACHE_SIZE = calculateMaxCacheSize();
+
+    private static int calculateMaxCacheSize() {
+        int cacheSizeMB = AppConstants.IMAGE_PREVIEW_CACHE_SIZE_MB;
+        long cacheSizeKB = cacheSizeMB * 1024L;
+        // Average 240×160 RGB image is approximately 115 KB
+        // Integer division: number of entries that fit in the cache
+        return Math.max(100, (int) (cacheSizeKB / 115));  // Minimum 100 entries
+    }
+    private static final Map<String, ImagePreviewEntry> imagePreviewCache =
+        Collections.synchronizedMap(new LinkedHashMap<String, ImagePreviewEntry>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, ImagePreviewEntry> eldest) {
+                boolean shouldRemove = size() > MAX_CACHE_SIZE;
+                if (shouldRemove) {
+                    logToConsoleOnly("Image preview cache full, evicting: " + eldest.getKey());
+                }
+                return shouldRemove;
+            }
+        });
+
+    private static class ImagePreviewEntry {
+        final long lastModified;
+        final BufferedImage preview;  // Strong reference (no SoftReference)
+
+        ImagePreviewEntry(long lastModified, BufferedImage preview) {
+            this.lastModified = lastModified;
+            this.preview = preview;
+        }
+    }
+
     public static BufferedImage readLowResImage(File file, int targetWidth, int targetHeight) throws Exception {
-        try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            if (!readers.hasNext()) {
+        String path = file.getAbsolutePath();
+        long lastModified = file.lastModified();
+
+        // Check cache first (for ALL file types - RAW, JPEG, PNG, etc.)
+        ImagePreviewEntry entry = imagePreviewCache.get(path);
+        if (entry != null && entry.lastModified == lastModified) {
+            logToConsoleOnly("Retrieved cached preview: " + file.getName());
+            return scalePreviewIfNeeded(entry.preview, targetWidth, targetHeight);
+        }
+
+        // Cache miss - extract/read image
+        BufferedImage fullImage;
+        if (isRawFile(file)) {
+            // RAW files: Extract embedded JPEG preview
+            fullImage = extractRawPreview(file);
+            if (fullImage == null) {
+                logToConsoleOnly("Skipping RAW file without embedded preview: " + file.getName());
                 return null;
             }
-
-            ImageReader reader = readers.next();
-            reader.setInput(iis, true);
-
-            int fullWidth = reader.getWidth(0);
-            int fullHeight = reader.getHeight(0);
-
-            int xStep = Math.max(1, fullWidth / targetWidth);
-            int yStep = Math.max(1, fullHeight / targetHeight);
-
-            ImageReadParam parameters = reader.getDefaultReadParam();
-            parameters.setSourceSubsampling(xStep, yStep, xStep / 2, yStep / 2); // read every n-th pixel
-
-            return reader.read(0, parameters);
+        } else {
+            // Regular JPEG/PNG files: Read via ImageIO
+            fullImage = ImageIO.read(file);
+            if (fullImage == null) {
+                return null;
+            }
         }
+
+        // Scale to display resolution and cache (NOT arbitrary size!)
+        // Cache at THUMBNAIL_ICON_WIDTH × THUMBNAIL_ICON_HEIGHT (240×160 default)
+        // This is the display resolution, so thumbnails can use it directly
+        int cacheWidth = AppConstants.THUMBNAIL_ICON_WIDTH;
+        int cacheHeight = AppConstants.THUMBNAIL_ICON_HEIGHT;
+        BufferedImage cachedPreview = scalePreviewIfNeeded(fullImage, cacheWidth, cacheHeight);
+
+        // Store at display resolution
+        imagePreviewCache.put(path, new ImagePreviewEntry(lastModified, cachedPreview));
+
+        logToConsoleOnly("Cached preview for: " + file.getName());
+
+        // Return scaled to requested size (e.g., 8×8 for hashing, 240×160 for display)
+        return scalePreviewIfNeeded(cachedPreview, targetWidth, targetHeight);
     }
 
     public static boolean isImageFile(File file) {
         String name = file.getName().toLowerCase();
         return name.endsWith(".jpg") || name.endsWith(".jpeg")
                 || name.endsWith(".png") || name.endsWith(".bmp")
-                || name.endsWith(".gif") || name.endsWith(".webp");
+                || name.endsWith(".gif") || name.endsWith(".webp")
+                // RAW formats
+                || name.endsWith(".arw") || name.endsWith(".sr2")  // Sony
+                || name.endsWith(".cr2") || name.endsWith(".cr3") || name.endsWith(".crw")  // Canon
+                || name.endsWith(".nef") || name.endsWith(".nrw")  // Nikon
+                || name.endsWith(".dng")  // Adobe/Universal
+                || name.endsWith(".orf") || name.endsWith(".ori")  // Olympus
+                || name.endsWith(".raf")  // Fujifilm
+                || name.endsWith(".pef") || name.endsWith(".ptx")  // Pentax
+                || name.endsWith(".rw2")  // Panasonic
+                || name.endsWith(".3fr")  // Hasselblad
+                || name.endsWith(".raw");  // Generic
+    }
+
+    public static boolean isRawFile(File file) {
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".arw") || name.endsWith(".sr2")
+                || name.endsWith(".cr2") || name.endsWith(".cr3") || name.endsWith(".crw")
+                || name.endsWith(".nef") || name.endsWith(".nrw")
+                || name.endsWith(".dng")
+                || name.endsWith(".orf") || name.endsWith(".ori")
+                || name.endsWith(".raf")
+                || name.endsWith(".pef") || name.endsWith(".ptx")
+                || name.endsWith(".rw2")
+                || name.endsWith(".3fr")
+                || name.endsWith(".raw");
+    }
+
+    /**
+     * Extracts embedded JPEG preview from a RAW file.
+     *
+     * Uses metadata-extractor to locate the thumbnail, then reads the bytes directly.
+     * Caching is handled by readLowResImage(), not here.
+     *
+     * @param file The RAW file to extract preview from
+     * @return BufferedImage of the embedded JPEG preview, or null if no preview found
+     */
+    private static BufferedImage extractRawPreview(File file) {
+        try {
+            Metadata metadata = ImageMetadataReader.readMetadata(file);
+            ExifThumbnailDirectory thumbnailDir = metadata.getFirstDirectoryOfType(ExifThumbnailDirectory.class);
+
+            if (thumbnailDir == null) {
+                return null;
+            }
+
+            // Get thumbnail length from metadata-extractor
+            // The library handles all RAW format parsing for us
+            Integer length = thumbnailDir.getInteger(ExifThumbnailDirectory.TAG_THUMBNAIL_LENGTH);
+
+            if (length == null) {
+                return null;
+            }
+
+            // Use getAdjustedThumbnailOffset() for the correct absolute offset
+            // This method properly calculates the offset relative to the file start
+            int adjustedOffset = thumbnailDir.getAdjustedThumbnailOffset();
+
+            // Read the thumbnail bytes from the file at the adjusted offset
+            byte[] thumbnailBytes = new byte[length];
+            try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+                raf.seek(adjustedOffset);
+                raf.readFully(thumbnailBytes);
+            }
+
+            // Decode the JPEG thumbnail
+            ByteArrayInputStream bais = new ByteArrayInputStream(thumbnailBytes);
+            return ImageIO.read(bais);
+
+        } catch (Exception e) {
+            logToConsoleOnly("Failed to extract preview from RAW file: " + file.getName() + " - " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static BufferedImage scalePreviewIfNeeded(BufferedImage preview, int targetWidth, int targetHeight) {
+        int previewWidth = preview.getWidth();
+        int previewHeight = preview.getHeight();
+
+        // If preview is significantly larger than target, scale it down
+        if (previewWidth > targetWidth * 2 || previewHeight > targetHeight * 2) {
+            int xStep = Math.max(1, previewWidth / targetWidth);
+            int yStep = Math.max(1, previewHeight / targetHeight);
+
+            BufferedImage scaledPreview = new BufferedImage(
+                previewWidth / xStep,
+                previewHeight / yStep,
+                BufferedImage.TYPE_INT_RGB
+            );
+
+            java.awt.Graphics2D g = scaledPreview.createGraphics();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                              java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(preview, 0, 0, scaledPreview.getWidth(), scaledPreview.getHeight(), null);
+            g.dispose();
+
+            return scaledPreview;
+        }
+
+        return preview;
     }
 
     public static long extractTimestamp(File file) {
@@ -127,5 +286,30 @@ public class PhotoUtils {
         hsv[1] = s;
         hsv[2] = v;
         return hsv;
+    }
+
+    /**
+     * Returns the number of image previews currently cached in memory.
+     * Useful for debugging and monitoring cache effectiveness.
+     */
+    public static int getImagePreviewCacheSize() {
+        return imagePreviewCache.size();
+    }
+
+    /**
+     * Returns the maximum image preview cache size (LRU limit).
+     */
+    public static int getImagePreviewCacheMaxSize() {
+        return MAX_CACHE_SIZE;
+    }
+
+    /**
+     * Clears all cached image previews.
+     * Useful for testing or freeing memory.
+     */
+    public static void clearImagePreviewCache() {
+        int size = imagePreviewCache.size();
+        imagePreviewCache.clear();
+        logMessage("Cleared image preview cache (" + size + " entries)");
     }
 }
