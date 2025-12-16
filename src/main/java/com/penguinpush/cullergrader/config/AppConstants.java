@@ -23,6 +23,7 @@ public class AppConstants {
         config = loaded;
     }
 
+    public static final String VERSION = config.VERSION;
     public static final boolean DARK_THEME = config.DARK_THEME;
     public static final String CACHE_FILE = config.CACHE_FILE;
     public static final String LOG_DIRECTORY = config.LOG_DIRECTORY;
