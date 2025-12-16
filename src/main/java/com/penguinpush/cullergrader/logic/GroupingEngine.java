@@ -45,7 +45,7 @@ public class GroupingEngine {
         }
 
         // Compile expression once for all groups (performance optimization)
-        String strategy = AppConstants.DEFAULT_SELECTION_STRATEGY;
+        String strategy = AppConstants.SELECTION_STRATEGY;
         com.penguinpush.cullergrader.expression.ASTNode compiledStrategy = null;
         try {
             compiledStrategy = strategyManager.compileExpression(strategy);

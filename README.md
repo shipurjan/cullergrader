@@ -198,7 +198,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
     "HASHED_WIDTH": 12,
     "HASHED_HEIGHT": 12,
     "TIME_THRESHOLD_SECONDS": 0.3,
-    "DEFAULT_SELECTION_STRATEGY": "deltaTime > 5 || similarity < 10 || (similarity < 20 && index % 2 == 0) || (similarity >= 20 && (index == 0 || index == length - 1))",
+    "SELECTION_STRATEGY": "(similarity > 22 && index % 2 == 0) || (similarity > 15 && similarity <= 22 && index % 3 == 0) || (similarity <= 15 && (index == 0 || index == length - 1))",
     "SIMILARITY_THRESHOLD_PERCENT": 30,
     "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
 }
@@ -212,12 +212,11 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
 
 **Selection Strategy:**
 The default expression automatically adapts photo selection based on scene dynamics:
-- **Time gaps:** Always selects photos taken >5 seconds apart (captures intentional pauses)
-- **High variation (< 10% similar):** Selects every photo (dynamic action scenes)
-- **Moderate variation (10-20% similar):** Selects every 2nd photo (balanced coverage)
-- **Low variation (20-30% similar):** Selects only first and last (static scenes, minimal redundancy)
+- **High variation (>22% different):** Selects every 2nd photo (approaching grouping boundary)
+- **Moderate variation (15-22% different):** Selects every 3rd photo (balanced coverage)
+- **Low variation (≤15% different):** Selects only first and last (very similar, minimal redundancy)
 
-This means burst shots of static subjects (landscapes, portraits) automatically select fewer photos, while dynamic scenes (street, sports, wildlife) keep more shots.
+Note: The `similarity` metric measures difference (0% = identical, 100% = completely different). Photos >30% different start new groups, so this strategy operates within the 0-30% range. Static burst shots automatically select fewer photos, while dynamic scenes keep more.
 
 **Higher Hash Resolution (12×12):**
 Increased from 8×8 for better similarity detection, especially useful with the tighter 30% threshold.
@@ -237,10 +236,10 @@ Increased from 8×8 for better similarity detection, especially useful with the 
 | `HASHED_HEIGHT`                | The height that images are computed at before hashing, higher values mean more accurate similarity checks at the cost of performance                                                                                                       | `int`         |
 | `TIME_THRESHOLD_SECONDS`       | The default amount of seconds between photos (from the timestamp) before they're counted as a new group. Editable in-app, but will not change the default stored here                                                                      | `float`       |
 | `SIMILARITY_THRESHOLD_PERCENT` | The default similarity between two photo hashes before they're counted as a new group. Higher values means more lenience in image similarity (larger groups, less in number). Editable in-app, but will not change the default stored here | `float`       |
-| `DEFAULT_SELECTION_STRATEGY`   | The automatic selection strategy when creating groups. Can be a predefined alias or a custom boolean expression (see Expression Syntax below)                                                                                              | `String`      |
+| `SELECTION_STRATEGY`   | The automatic selection strategy when creating groups. Can be a predefined alias or a custom boolean expression (see Expression Syntax below)                                                                                              | `String`      |
 | `IMAGE_PREVIEW_CACHE_SIZE_MB`  | Maximum memory (in megabytes) to use for caching image previews. Default 1024 MB (1 GB). Increase for large photo shoots (see Performance Tuning section)                                                                                  | `int`         |
 
-### Expression Syntax for `DEFAULT_SELECTION_STRATEGY`
+### Expression Syntax for `SELECTION_STRATEGY`
 
 The selection strategy can be either a **predefined alias** or a **custom boolean expression** that determines which photos to select from each group.
 
@@ -286,7 +285,7 @@ You can write custom boolean expressions using the following components:
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "index < 3"
+    "SELECTION_STRATEGY": "index < 3"
 }
 ```
 
@@ -294,7 +293,7 @@ Selects the first 3 photos from each group (indices 0, 1, 2).
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "index % 2 == 0"
+    "SELECTION_STRATEGY": "index % 2 == 0"
 }
 ```
 
@@ -302,7 +301,7 @@ Selects every other photo (even indices: 0, 2, 4, 6...).
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "index % 2 == 1"
+    "SELECTION_STRATEGY": "index % 2 == 1"
 }
 ```
 
@@ -312,7 +311,7 @@ Selects every other photo (odd indices: 1, 3, 5, 7...).
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "deltaTime > 5"
+    "SELECTION_STRATEGY": "deltaTime > 5"
 }
 ```
 
@@ -320,7 +319,7 @@ Selects photos taken more than 5 seconds after the previous photo. Useful for ca
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "similarity < 30"
+    "SELECTION_STRATEGY": "similarity < 30"
 }
 ```
 
@@ -328,7 +327,7 @@ Selects photos less than 30% similar to the previous photo. Great for finding th
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "index == 0 || similarity < 20"
+    "SELECTION_STRATEGY": "index == 0 || similarity < 20"
 }
 ```
 
@@ -338,7 +337,7 @@ Selects the first photo OR any photo with low similarity (< 20%). Ensures you ke
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "length < 5 ? true : index < 2"
+    "SELECTION_STRATEGY": "length < 5 ? true : index < 2"
 }
 ```
 
@@ -346,7 +345,7 @@ Smart selection: if the group has fewer than 5 photos, select all; otherwise sel
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "length > 10 ? index % 3 == 0 : index < 3"
+    "SELECTION_STRATEGY": "length > 10 ? index % 3 == 0 : index < 3"
 }
 ```
 
@@ -356,7 +355,7 @@ For large groups (> 10 photos), select every 3rd photo; for smaller groups, sele
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "(index < 3 || index > length - 3) && similarity < 50"
+    "SELECTION_STRATEGY": "(index < 3 || index > length - 3) && similarity < 50"
 }
 ```
 
@@ -364,7 +363,7 @@ Selects photos from the first 3 or last 3 positions, but only if they're less th
 
 ```json
 {
-    "DEFAULT_SELECTION_STRATEGY": "index == 0 || (deltaTime > 3 && similarity < 40)"
+    "SELECTION_STRATEGY": "index == 0 || (deltaTime > 3 && similarity < 40)"
 }
 ```
 

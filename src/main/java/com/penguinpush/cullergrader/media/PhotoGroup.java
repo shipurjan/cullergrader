@@ -98,7 +98,7 @@ public class PhotoGroup extends GridMedia {
     }
 
     public void applyDefaultSelectionStrategy() {
-        String strategy = AppConstants.DEFAULT_SELECTION_STRATEGY;
+        String strategy = AppConstants.SELECTION_STRATEGY;
 
         try {
             com.penguinpush.cullergrader.expression.SelectionStrategyManager manager =
