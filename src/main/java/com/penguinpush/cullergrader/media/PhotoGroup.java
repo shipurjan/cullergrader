@@ -100,42 +100,56 @@ public class PhotoGroup extends GridMedia {
     public void applyDefaultSelectionStrategy() {
         String strategy = AppConstants.DEFAULT_SELECTION_STRATEGY;
 
-        switch (strategy.toLowerCase()) {
-            case "first":
-                if (!photos.isEmpty()) {
-                    selectedTakes.add(photos.get(0));
+        try {
+            com.penguinpush.cullergrader.expression.SelectionStrategyManager manager =
+                new com.penguinpush.cullergrader.expression.SelectionStrategyManager();
+            com.penguinpush.cullergrader.expression.ASTNode ast = manager.compileExpression(strategy);
+
+            for (Photo photo : photos) {
+                if (manager.shouldSelectPhoto(ast, photo, this)) {
+                    selectedTakes.add(photo);
                 }
-                break;
+            }
 
-            case "last":
-                if (!photos.isEmpty()) {
-                    selectedTakes.add(photos.get(photos.size() - 1));
+        } catch (Exception e) {
+            // Log error and fallback to first photo
+            logMessage("Expression error in strategy '" + strategy + "': " + e.getMessage() + ", falling back to 'first'");
+
+            if (!photos.isEmpty()) {
+                selectedTakes.add(photos.get(0));
+            }
+        }
+    }
+
+    /**
+     * Optimized version that reuses a pre-compiled expression.
+     * This avoids recompiling the same expression for every group.
+     *
+     * @param manager The strategy manager
+     * @param compiledStrategy The pre-compiled expression AST (can be null)
+     */
+    public void applyDefaultSelectionStrategy(
+            com.penguinpush.cullergrader.expression.SelectionStrategyManager manager,
+            com.penguinpush.cullergrader.expression.ASTNode compiledStrategy) {
+
+        // Fallback to original method if parameters are null
+        if (manager == null || compiledStrategy == null) {
+            applyDefaultSelectionStrategy();
+            return;
+        }
+
+        try {
+            for (Photo photo : photos) {
+                if (manager.shouldSelectPhoto(compiledStrategy, photo, this)) {
+                    selectedTakes.add(photo);
                 }
-                break;
+            }
 
-            case "first_and_last":
-                if (!photos.isEmpty()) {
-                    selectedTakes.add(photos.get(0));
-                    if (photos.size() > 1) {
-                        selectedTakes.add(photos.get(photos.size() - 1));
-                    }
-                }
-                break;
-
-            case "all":
-                selectedTakes.addAll(photos);
-                break;
-
-            case "none":
-                // Don't select anything
-                break;
-
-            default:
-                // Invalid strategy, fallback to "first"
-                if (!photos.isEmpty()) {
-                    selectedTakes.add(photos.get(0));
-                }
-                logMessage("Invalid selection strategy: " + strategy + ", using 'first'");
+        } catch (Exception e) {
+            logMessage("Evaluation error: " + e.getMessage() + ", using fallback");
+            if (!photos.isEmpty()) {
+                selectedTakes.add(photos.get(0));
+            }
         }
     }
 }

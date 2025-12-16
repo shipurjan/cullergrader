@@ -11,6 +11,8 @@ import java.util.*;
 import java.io.File;
 
 public class GroupingEngine {
+    private final com.penguinpush.cullergrader.expression.SelectionStrategyManager strategyManager =
+        new com.penguinpush.cullergrader.expression.SelectionStrategyManager();
 
     public List<Photo> photoListFromFolder(File folder) {
         File[] imageFiles = folder.listFiles((f) -> f.isFile() && PhotoUtils.isImageFile(f));
@@ -42,6 +44,15 @@ public class GroupingEngine {
             }
         }
 
+        // Compile expression once for all groups (performance optimization)
+        String strategy = AppConstants.DEFAULT_SELECTION_STRATEGY;
+        com.penguinpush.cullergrader.expression.ASTNode compiledStrategy = null;
+        try {
+            compiledStrategy = strategyManager.compileExpression(strategy);
+        } catch (Exception e) {
+            logMessage("Failed to compile selection strategy '" + strategy + "': " + e.getMessage());
+        }
+
         List<PhotoGroup> groups = new ArrayList<>();
         PhotoGroup currentGroup = new PhotoGroup();
 
@@ -67,7 +78,7 @@ public class GroupingEngine {
                 currentGroup.addPhoto(current);
             } else {
                 currentGroup.setIndex(groups.size());
-                currentGroup.applyDefaultSelectionStrategy();
+                currentGroup.applyDefaultSelectionStrategy(strategyManager, compiledStrategy);
                 groups.add(currentGroup);
                 currentGroup = new PhotoGroup();
 
@@ -85,7 +96,7 @@ public class GroupingEngine {
         // add the last group too
         if (currentGroup.getSize() > 0) {
             currentGroup.setIndex(groups.size());
-            currentGroup.applyDefaultSelectionStrategy();
+            currentGroup.applyDefaultSelectionStrategy(strategyManager, compiledStrategy);
             groups.add(currentGroup);
         }
 
