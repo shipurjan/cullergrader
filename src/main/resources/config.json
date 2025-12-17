@@ -9,7 +9,7 @@
     "HASHED_WIDTH": 12,
     "HASHED_HEIGHT": 12,
     "TIME_THRESHOLD_SECONDS": 0.3,
-    "SELECTION_STRATEGY": "maxGroupSimilarity > 25 ? index % 2 == 0 : (maxGroupSimilarity > 20 ? index % 3 == 0 : (maxGroupSimilarity > 15 ? index % 5 == 0 : index % 10 == 0))",
+    "SELECTION_STRATEGY": "similarity > 17 || (maxGroupSimilarity > 25 ? index % 2 == 0 : (maxGroupSimilarity > 20 ? index % 3 == 0 : (maxGroupSimilarity > 15 ? index % 5 == 0 : index % 10 == 0)))",
     "SIMILARITY_THRESHOLD_PERCENT": 30,
     "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
 }

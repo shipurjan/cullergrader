@@ -198,7 +198,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
     "HASHED_WIDTH": 12,
     "HASHED_HEIGHT": 12,
     "TIME_THRESHOLD_SECONDS": 0.3,
-    "SELECTION_STRATEGY": "maxGroupSimilarity > 25 ? index % 2 == 0 : (maxGroupSimilarity > 20 ? index % 3 == 0 : (maxGroupSimilarity > 15 ? index % 5 == 0 : index % 10 == 0))",
+    "SELECTION_STRATEGY": "similarity > 17 || (maxGroupSimilarity > 25 ? index % 2 == 0 : (maxGroupSimilarity > 20 ? index % 3 == 0 : (maxGroupSimilarity > 15 ? index % 5 == 0 : index % 10 == 0)))",
     "SIMILARITY_THRESHOLD_PERCENT": 30,
     "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
 }
@@ -211,13 +211,15 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
 - `SIMILARITY_THRESHOLD_PERCENT: 30` works well for my shooting style, grouping similar burst shots while keeping distinct compositions separate.
 
 **Selection Strategy:**
-The default expression uses `maxGroupSimilarity` (the maximum difference found in each group) to adapt selection frequency:
-- **Very high variation (>25% max):** Selects every 2nd photo (indices 0, 2, 4, 6...)
-- **High variation (20-25% max):** Selects every 3rd photo (indices 0, 3, 6, 9...)
-- **Moderate variation (15-20% max):** Selects every 5th photo (indices 0, 5, 10, 15...)
-- **Low variation (≤15% max):** Selects every 10th photo (indices 0, 10, 20, 30...)
+The default expression combines local transitions with group-level sampling:
+- **Local transitions:** Always selects photos with similarity >17% to previous photo (captures significant jumps)
+- **Plus group-level sampling based on maxGroupSimilarity:**
+  - **>25% max:** Every 2nd photo (very dynamic groups)
+  - **20-25% max:** Every 3rd photo (high variation)
+  - **15-20% max:** Every 5th photo (moderate variation)
+  - **≤15% max:** Every 10th photo (low variation)
 
-This four-tier approach with stricter thresholds provides aggressive culling while ensuring every group keeps at least 1 photo. With typical street/action photography (mean maxGroupSimilarity ~17%), most groups fall into the low variation tiers (≤15%), resulting in ~35-40% selection from multi-photo bursts. Single-photo groups always keep 1 photo. Dynamic scenes with significant variation (>25%) keep more shots (50%), while static bursts are heavily culled (10%).
+This hybrid approach captures both significant transitions within sequences (via local similarity) and provides consistent sampling based on overall group variation (via maxGroupSimilarity). With typical street photography (mean maxGroupSimilarity ~17%), this results in ~35-40% selection from multi-photo bursts, ensuring important moments aren't missed due to modulo patterns while still culling redundant similar shots.
 
 **Higher Hash Resolution (12×12):**
 Increased from 8×8 for better similarity detection, especially useful with the tighter 30% threshold.
