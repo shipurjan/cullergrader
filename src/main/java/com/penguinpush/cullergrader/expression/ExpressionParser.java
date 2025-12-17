@@ -157,7 +157,7 @@ public class ExpressionParser {
         }
 
         // Variables
-        if (match(TokenType.INDEX, TokenType.LENGTH, TokenType.DELTA_TIME, TokenType.SIMILARITY)) {
+        if (match(TokenType.INDEX, TokenType.LENGTH, TokenType.DELTA_TIME, TokenType.SIMILARITY, TokenType.MAX_GROUP_SIMILARITY)) {
             return new VariableNode(previous().getType());
         }
 

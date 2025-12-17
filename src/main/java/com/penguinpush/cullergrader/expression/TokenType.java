@@ -15,6 +15,7 @@ public enum TokenType {
     LENGTH,         // length (total photos in group)
     DELTA_TIME,     // deltaTime (seconds since previous photo)
     SIMILARITY,     // similarity (% similarity to previous photo)
+    MAX_GROUP_SIMILARITY,  // maxGroupSimilarity (max similarity in group)
 
     // Grouping
     LPAREN,         // (

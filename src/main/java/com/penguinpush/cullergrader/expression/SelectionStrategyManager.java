@@ -80,8 +80,9 @@ public class SelectionStrategyManager {
             List<Float> metrics = photo.getMetrics();
             float deltaTime = metrics.size() > 0 ? metrics.get(0) : 0.0f;
             float similarity = metrics.size() > 1 ? metrics.get(1) : 0.0f;
+            float maxGroupSimilarity = group.getMaxGroupSimilarity();
 
-            EvaluationContext context = new EvaluationContext(index, length, deltaTime, similarity);
+            EvaluationContext context = new EvaluationContext(index, length, deltaTime, similarity, maxGroupSimilarity);
 
             // Evaluate
             ExpressionEvaluator evaluator = new ExpressionEvaluator();

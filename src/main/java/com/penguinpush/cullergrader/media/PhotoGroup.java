@@ -14,6 +14,7 @@ import java.util.Set;
 public class PhotoGroup extends GridMedia {
     private final List<Photo> photos = new ArrayList<>();
     private final LinkedHashSet<Photo> selectedTakes = new LinkedHashSet<>();
+    private float maxGroupSimilarity = 0.0f;
 
     @Override
     public BufferedImage getThumbnail() {
@@ -95,6 +96,14 @@ public class PhotoGroup extends GridMedia {
 
     public void clearSelections() {
         selectedTakes.clear();
+    }
+
+    public float getMaxGroupSimilarity() {
+        return maxGroupSimilarity;
+    }
+
+    public void setMaxGroupSimilarity(float maxGroupSimilarity) {
+        this.maxGroupSimilarity = maxGroupSimilarity;
     }
 
     public void applyDefaultSelectionStrategy() {

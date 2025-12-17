@@ -21,6 +21,8 @@ public class VariableNode extends ASTNode {
                 return context.getDeltaTime();
             case SIMILARITY:
                 return context.getSimilarity();
+            case MAX_GROUP_SIMILARITY:
+                return context.getMaxGroupSimilarity();
             default:
                 throw new ExpressionException("Unknown variable: " + variable);
         }

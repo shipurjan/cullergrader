@@ -198,7 +198,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
     "HASHED_WIDTH": 12,
     "HASHED_HEIGHT": 12,
     "TIME_THRESHOLD_SECONDS": 0.3,
-    "SELECTION_STRATEGY": "(similarity > 22 && index % 2 == 0) || (similarity > 15 && similarity <= 22 && index % 3 == 0) || (similarity <= 15 && (index == 0 || index == length - 1))",
+    "SELECTION_STRATEGY": "maxGroupSimilarity > 25 ? index % 2 == 0 : (maxGroupSimilarity > 20 ? index % 3 == 0 : (maxGroupSimilarity > 15 ? index % 5 == 0 : index % 10 == 0))",
     "SIMILARITY_THRESHOLD_PERCENT": 30,
     "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
 }
@@ -211,12 +211,13 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
 - `SIMILARITY_THRESHOLD_PERCENT: 30` works well for my shooting style, grouping similar burst shots while keeping distinct compositions separate.
 
 **Selection Strategy:**
-The default expression automatically adapts photo selection based on scene dynamics:
-- **High variation (>22% different):** Selects every 2nd photo (approaching grouping boundary)
-- **Moderate variation (15-22% different):** Selects every 3rd photo (balanced coverage)
-- **Low variation (≤15% different):** Selects only first and last (very similar, minimal redundancy)
+The default expression uses `maxGroupSimilarity` (the maximum difference found in each group) to adapt selection frequency:
+- **Very high variation (>25% max):** Selects every 2nd photo (indices 0, 2, 4, 6...)
+- **High variation (20-25% max):** Selects every 3rd photo (indices 0, 3, 6, 9...)
+- **Moderate variation (15-20% max):** Selects every 5th photo (indices 0, 5, 10, 15...)
+- **Low variation (≤15% max):** Selects every 10th photo (indices 0, 10, 20, 30...)
 
-Note: The `similarity` metric measures difference (0% = identical, 100% = completely different). Photos >30% different start new groups, so this strategy operates within the 0-30% range. Static burst shots automatically select fewer photos, while dynamic scenes keep more.
+This four-tier approach with stricter thresholds provides aggressive culling while ensuring every group keeps at least 1 photo. With typical street/action photography (mean maxGroupSimilarity ~17%), most groups fall into the low variation tiers (≤15%), resulting in ~35-40% selection from multi-photo bursts. Single-photo groups always keep 1 photo. Dynamic scenes with significant variation (>25%) keep more shots (50%), while static bursts are heavily culled (10%).
 
 **Higher Hash Resolution (12×12):**
 Increased from 8×8 for better similarity detection, especially useful with the tighter 30% threshold.
@@ -264,7 +265,8 @@ You can write custom boolean expressions using the following components:
 - `index` - 0-based position in group (0 = first photo, 1 = second, etc.)
 - `length` - Total number of photos in the group
 - `deltaTime` - Seconds since the previous photo (0 for first photo)
-- `similarity` - Similarity percentage to previous photo (0-100, lower = more different)
+- `similarity` - Difference % to previous photo (0 = identical, 100 = completely different)
+- `maxGroupSimilarity` - Maximum difference % found in the group (0-30 within groups)
 
 **Keywords:**
 

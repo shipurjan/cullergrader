@@ -49,7 +49,9 @@ public class GroupingEngine {
         com.penguinpush.cullergrader.expression.ASTNode compiledStrategy = null;
         try {
             compiledStrategy = strategyManager.compileExpression(strategy);
+            System.out.println("[DEBUG] Compiled selection strategy: " + strategy);
         } catch (Exception e) {
+            System.err.println("[ERROR] Failed to compile selection strategy: " + e.getMessage());
             logMessage("Failed to compile selection strategy '" + strategy + "': " + e.getMessage());
         }
 
@@ -78,6 +80,19 @@ public class GroupingEngine {
                 currentGroup.addPhoto(current);
             } else {
                 currentGroup.setIndex(groups.size());
+
+                // Calculate max similarity for the group (skip first photo - it compares to previous group)
+                float maxSimilarity = 0.0f;
+                for (Photo photo : currentGroup.getPhotos()) {
+                    if (photo.getIndex() == 0) continue;  // First photo compares to different group
+                    List<Float> metrics = photo.getMetrics();
+                    if (metrics.size() > 1) {
+                        maxSimilarity = Math.max(maxSimilarity, metrics.get(1));
+                    }
+                }
+                currentGroup.setMaxGroupSimilarity(maxSimilarity);
+                System.out.println("[DEBUG] Group " + groups.size() + " maxGroupSimilarity: " + maxSimilarity + ", size: " + currentGroup.getSize());
+
                 currentGroup.applyDefaultSelectionStrategy(strategyManager, compiledStrategy);
                 groups.add(currentGroup);
                 currentGroup = new PhotoGroup();
@@ -96,6 +111,19 @@ public class GroupingEngine {
         // add the last group too
         if (currentGroup.getSize() > 0) {
             currentGroup.setIndex(groups.size());
+
+            // Calculate max similarity for the final group (skip first photo - it compares to previous group)
+            float maxSimilarity = 0.0f;
+            for (Photo photo : currentGroup.getPhotos()) {
+                if (photo.getIndex() == 0) continue;  // First photo compares to different group
+                List<Float> metrics = photo.getMetrics();
+                if (metrics.size() > 1) {
+                    maxSimilarity = Math.max(maxSimilarity, metrics.get(1));
+                }
+            }
+            currentGroup.setMaxGroupSimilarity(maxSimilarity);
+            System.out.println("[DEBUG] Final group " + groups.size() + " maxGroupSimilarity: " + maxSimilarity + ", size: " + currentGroup.getSize());
+
             currentGroup.applyDefaultSelectionStrategy(strategyManager, compiledStrategy);
             groups.add(currentGroup);
         }

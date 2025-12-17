@@ -19,6 +19,7 @@ public class Tokenizer {
         KEYWORDS.put("length", TokenType.LENGTH);
         KEYWORDS.put("deltaTime", TokenType.DELTA_TIME);
         KEYWORDS.put("similarity", TokenType.SIMILARITY);
+        KEYWORDS.put("maxGroupSimilarity", TokenType.MAX_GROUP_SIMILARITY);
     }
 
     private String source;

@@ -1,25 +1,22 @@
 package com.penguinpush.cullergrader.logic;
 
-import com.penguinpush.cullergrader.config.AppConstants;
-import com.penguinpush.cullergrader.media.Photo;
-import com.penguinpush.cullergrader.media.PhotoGroup;
-import static com.penguinpush.cullergrader.utils.Logger.logMessage;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import javax.swing.*;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.media.Photo;
+import com.penguinpush.cullergrader.media.PhotoGroup;
+import static com.penguinpush.cullergrader.utils.Logger.logMessage;
 
 public class FileUtils {
 
@@ -115,18 +112,15 @@ public class FileUtils {
 
         root.put("totalGroups", photoGroups.size());
         root.put("totalPhotos", photoGroups.stream().mapToInt(PhotoGroup::getSize).sum());
+        root.put("selectedPhotos", photoGroups.stream().mapToInt(g -> g.getSelectedTakes().size()).sum());
         root.put("exportTimestamp", System.currentTimeMillis());
-
-        Map<String, Float> thresholds = new HashMap<>();
-        thresholds.put("timeThresholdSeconds", timeThreshold);
-        thresholds.put("similarityThresholdPercent", similarityThreshold);
-        root.put("thresholds", thresholds);
 
         List<Map<String, Object>> groupsList = new ArrayList<>();
         for (PhotoGroup group : photoGroups) {
             Map<String, Object> groupMap = new HashMap<>();
             groupMap.put("groupIndex", group.getIndex());
             groupMap.put("photoCount", group.getSize());
+            groupMap.put("maxGroupSimilarity", group.getMaxGroupSimilarity());
 
             Set<Photo> selectedTakes = group.getSelectedTakes();
             List<String> selectedFilenames = new ArrayList<>();
@@ -155,6 +149,8 @@ public class FileUtils {
             groupMap.put("photos", photosList);
             groupsList.add(groupMap);
         }
+
+        // Add groups array last for better readability
         root.put("groups", groupsList);
 
         // Write JSON file with pretty printing
