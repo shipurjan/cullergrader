@@ -16,6 +16,7 @@ public enum TokenType {
     DELTA_TIME,     // deltaTime (seconds since previous photo)
     SIMILARITY,     // similarity (% similarity to previous photo)
     MAX_GROUP_SIMILARITY,  // maxGroupSimilarity (max similarity in group)
+    MIN_DISTANCE_TO_SELECTED,  // minDistanceToSelected (min % distance to selected photos)
 
     // Grouping
     LPAREN,         // (

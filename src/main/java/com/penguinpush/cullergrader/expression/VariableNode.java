@@ -23,6 +23,8 @@ public class VariableNode extends ASTNode {
                 return context.getSimilarity();
             case MAX_GROUP_SIMILARITY:
                 return context.getMaxGroupSimilarity();
+            case MIN_DISTANCE_TO_SELECTED:
+                return context.getMinDistanceToSelected();
             default:
                 throw new ExpressionException("Unknown variable: " + variable);
         }

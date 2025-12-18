@@ -20,6 +20,7 @@ public class Tokenizer {
         KEYWORDS.put("deltaTime", TokenType.DELTA_TIME);
         KEYWORDS.put("similarity", TokenType.SIMILARITY);
         KEYWORDS.put("maxGroupSimilarity", TokenType.MAX_GROUP_SIMILARITY);
+        KEYWORDS.put("minDistanceToSelected", TokenType.MIN_DISTANCE_TO_SELECTED);
     }
 
     private String source;

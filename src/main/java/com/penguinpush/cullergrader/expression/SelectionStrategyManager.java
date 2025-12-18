@@ -1,11 +1,14 @@
 package com.penguinpush.cullergrader.expression;
 
+import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.logic.HashUtils;
 import com.penguinpush.cullergrader.media.Photo;
 import com.penguinpush.cullergrader.media.PhotoGroup;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.penguinpush.cullergrader.utils.Logger.logMessage;
 
@@ -68,9 +71,10 @@ public class SelectionStrategyManager {
      * @param ast The compiled expression AST
      * @param photo The photo to evaluate
      * @param group The group containing the photo
+     * @param selectedPhotos The set of already-selected photos (for stateful variables)
      * @return true if the photo should be selected, false otherwise
      */
-    public boolean shouldSelectPhoto(ASTNode ast, Photo photo, PhotoGroup group) {
+    public boolean shouldSelectPhoto(ASTNode ast, Photo photo, PhotoGroup group, Set<Photo> selectedPhotos) {
         try {
             // Build evaluation context from photo metadata
             int index = photo.getIndex();
@@ -82,7 +86,12 @@ public class SelectionStrategyManager {
             float similarity = metrics.size() > 1 ? metrics.get(1) : 0.0f;
             float maxGroupSimilarity = group.getMaxGroupSimilarity();
 
-            EvaluationContext context = new EvaluationContext(index, length, deltaTime, similarity, maxGroupSimilarity);
+            // Calculate minDistanceToSelected
+            float minDistanceToSelected = calculateMinDistanceToSelected(photo, selectedPhotos);
+
+            EvaluationContext context = new EvaluationContext(
+                index, length, deltaTime, similarity, maxGroupSimilarity, minDistanceToSelected
+            );
 
             // Evaluate
             ExpressionEvaluator evaluator = new ExpressionEvaluator();
@@ -92,6 +101,33 @@ public class SelectionStrategyManager {
             logMessage("Evaluation error for photo at index " + photo.getIndex() + ": " + e.getMessage());
             return false;  // Don't select on error
         }
+    }
+
+    /**
+     * Computes the minimum Hamming distance (as percentage) from a photo to all selected photos.
+     * Returns 100.0 (maximum distance) if no photos are selected yet.
+     *
+     * @param photo The photo to evaluate
+     * @param selectedPhotos The set of already-selected photos
+     * @return Minimum distance percentage (0-100)
+     */
+    private float calculateMinDistanceToSelected(Photo photo, Set<Photo> selectedPhotos) {
+        if (selectedPhotos.isEmpty()) {
+            return 100.0f;  // First photo has maximum "distance" from empty set
+        }
+
+        String currentHash = photo.getHash();
+        int hashLength = AppConstants.HASHED_WIDTH * AppConstants.HASHED_HEIGHT * 3;
+
+        float minDistance = 100.0f;
+
+        for (Photo selectedPhoto : selectedPhotos) {
+            int hammingDistance = HashUtils.hammingDistance(currentHash, selectedPhoto.getHash());
+            float distancePercent = 100.0f * hammingDistance / hashLength;
+            minDistance = Math.min(minDistance, distancePercent);
+        }
+
+        return minDistance;
     }
 
     /**

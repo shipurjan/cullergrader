@@ -115,7 +115,7 @@ public class PhotoGroup extends GridMedia {
             com.penguinpush.cullergrader.expression.ASTNode ast = manager.compileExpression(strategy);
 
             for (Photo photo : photos) {
-                if (manager.shouldSelectPhoto(ast, photo, this)) {
+                if (manager.shouldSelectPhoto(ast, photo, this, selectedTakes)) {
                     selectedTakes.add(photo);
                 }
             }
@@ -149,7 +149,7 @@ public class PhotoGroup extends GridMedia {
 
         try {
             for (Photo photo : photos) {
-                if (manager.shouldSelectPhoto(compiledStrategy, photo, this)) {
+                if (manager.shouldSelectPhoto(compiledStrategy, photo, this, selectedTakes)) {
                     selectedTakes.add(photo);
                 }
             }

@@ -198,7 +198,7 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
     "HASHED_WIDTH": 12,
     "HASHED_HEIGHT": 12,
     "TIME_THRESHOLD_SECONDS": 0.3,
-    "SELECTION_STRATEGY": "similarity > 17 || (maxGroupSimilarity > 25 ? index % 2 == 0 : (maxGroupSimilarity > 20 ? index % 3 == 0 : (maxGroupSimilarity > 15 ? index % 5 == 0 : index % 10 == 0)))",
+    "SELECTION_STRATEGY": "index == 0 || minDistanceToSelected > 15",
     "SIMILARITY_THRESHOLD_PERCENT": 30,
     "IMAGE_PREVIEW_CACHE_SIZE_MB": 2048
 }
@@ -211,15 +211,18 @@ Configuration is **optional**. Cullergrader includes sensible defaults for all s
 - `SIMILARITY_THRESHOLD_PERCENT: 30` works well for my shooting style, grouping similar burst shots while keeping distinct compositions separate.
 
 **Selection Strategy:**
-The default expression combines local transitions with group-level sampling:
-- **Local transitions:** Always selects photos with similarity >17% to previous photo (captures significant jumps)
-- **Plus group-level sampling based on maxGroupSimilarity:**
-  - **>25% max:** Every 2nd photo (very dynamic groups)
-  - **20-25% max:** Every 3rd photo (high variation)
-  - **15-20% max:** Every 5th photo (moderate variation)
-  - **≤15% max:** Every 10th photo (low variation)
+The default expression uses **greedy diversity selection** to avoid redundant similar photos:
+- Expression: `"index == 0 || minDistanceToSelected > 15"`
+- Always selects the first photo (index == 0)
+- Subsequent photos are only selected if they're >15% different from **all** previously-selected photos
+- This implements the Furthest-First Traversal algorithm for optimal diversity
 
-This hybrid approach captures both significant transitions within sequences (via local similarity) and provides consistent sampling based on overall group variation (via maxGroupSimilarity). With typical street photography (mean maxGroupSimilarity ~17%), this results in ~35-40% selection from multi-photo bursts, ensuring important moments aren't missed due to modulo patterns while still culling redundant similar shots.
+**Why this works:**
+- **Dynamic groups** (lots of variation): Many photos exceed the 15% threshold → more selections
+- **Static groups** (little variation): Few photos exceed 15% → fewer selections (but always at least one)
+- **Prevents redundancy:** Unlike pairwise similarity, this checks against the entire selection set, so you won't select visually similar photos just because they had different intermediate frames
+
+With 12×12 hash resolution, 15% distance ≈ 77 bits different out of 432 total. This provides good diversity while avoiding over-selection. For typical burst photography, this results in 2-5 selections per group, adapting automatically to scene dynamics.
 
 **Higher Hash Resolution (12×12):**
 Increased from 8×8 for better similarity detection, especially useful with the tighter 30% threshold.
@@ -269,6 +272,7 @@ You can write custom boolean expressions using the following components:
 - `deltaTime` - Seconds since the previous photo (0 for first photo)
 - `similarity` - Difference % to previous photo (0 = identical, 100 = completely different)
 - `maxGroupSimilarity` - Maximum difference % found in the group (0-30 within groups)
+- `minDistanceToSelected` - Minimum distance % to any previously-selected photo (100 for first photo, enables greedy diversity selection)
 
 **Keywords:**
 
@@ -372,6 +376,42 @@ Selects photos from the first 3 or last 3 positions, but only if they're less th
 ```
 
 Always selects the first photo, plus any photo taken more than 3 seconds later AND less than 40% similar.
+
+**Greedy Diversity Selection:**
+
+```json
+{
+    "SELECTION_STRATEGY": "index == 0 || minDistanceToSelected > 15"
+}
+```
+
+Default strategy. Selects first photo, then only photos >15% different from all already-selected photos. Prevents selecting similar-looking photos.
+
+```json
+{
+    "SELECTION_STRATEGY": "index == 0 || minDistanceToSelected > 20"
+}
+```
+
+More selective version with 20% threshold. Results in fewer selections, only keeping very diverse photos.
+
+```json
+{
+    "SELECTION_STRATEGY": "index == 0 || (minDistanceToSelected > 10 && deltaTime > 0.5)"
+}
+```
+
+Combines diversity with time spacing. Photo must be both >10% different from selected photos AND taken >0.5 seconds after previous photo.
+
+```json
+{
+    "SELECTION_STRATEGY": "minDistanceToSelected > maxGroupSimilarity"
+}
+```
+
+Adaptive threshold based on group characteristics. Automatically adjusts selection rate based on how diverse the group is.
+
+**Note:** `minDistanceToSelected` is a **stateful variable** - each photo's value depends on which photos were selected before it (in index order). This enables sophisticated diversity-based selection that's impossible with purely pairwise variables like `similarity`.
 
 #### Tips for Writing Expressions
 
