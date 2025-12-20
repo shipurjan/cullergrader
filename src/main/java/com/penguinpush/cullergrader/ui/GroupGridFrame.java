@@ -150,6 +150,15 @@ public class GroupGridFrame extends JFrame {
         });
         jMenu.add(jMenuItemExport);
 
+        jMenuItemExportRejected = new javax.swing.JMenuItem();
+        jMenuItemExportRejected.setText("Export Rejected Takes");
+        jMenuItemExportRejected.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemExportRejectedActionPerformed(evt);
+            }
+        });
+        jMenu.add(jMenuItemExportRejected);
+
         jMenuItemExportJson.setText("Export Group Information (JSON)");
         jMenuItemExportJson.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -222,6 +231,28 @@ public class GroupGridFrame extends JFrame {
             });
         }
     }//GEN-LAST:event_jMenuItemExportActionPerformed
+
+    private void jMenuItemExportRejectedActionPerformed(java.awt.event.ActionEvent evt) {
+        JFileChooser chooser = new JFileChooser(importDirectory != null ? importDirectory : new File(AppConstants.DEFAULT_FOLDER_PATH));
+        chooser.setDialogTitle("Export Rejected Takes To...");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+
+        int result = chooser.showOpenDialog(null);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File exportDirectory = chooser.getSelectedFile();
+            FileUtils.exportRejectedTakes(photoGroups, exportDirectory);
+
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Rejected takes exported successfully to: " + exportDirectory.getAbsolutePath(),
+                        "Export Complete!",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            });
+        }
+    }
 
     private void jMenuItemExportJsonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportJsonActionPerformed
         if (photoGroups == null || photoGroups.isEmpty()) {
@@ -330,6 +361,7 @@ public class GroupGridFrame extends JFrame {
     private javax.swing.JMenu jMenu;
     private javax.swing.JMenuBar jMenuBar;
     private javax.swing.JMenuItem jMenuItemExport;
+    private javax.swing.JMenuItem jMenuItemExportRejected;
     private javax.swing.JMenuItem jMenuItemExportJson;
     private javax.swing.JMenuItem jMenuItemOpen;
     private javax.swing.JButton jReloadButton;

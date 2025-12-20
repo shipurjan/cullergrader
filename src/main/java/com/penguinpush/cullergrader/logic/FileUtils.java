@@ -70,6 +70,49 @@ public class FileUtils {
         }
     }
 
+    public static void exportRejectedTakes(List<PhotoGroup> photoGroups, File targetFolder) {
+        if (!targetFolder.exists()) {
+            targetFolder.mkdirs();
+        }
+
+        Map<String, Integer> filenameCounts = new HashMap<>();
+
+        for (PhotoGroup group : photoGroups) {
+            Set<Photo> selectedPhotos = group.getSelectedTakes();
+            List<Photo> allPhotos = group.getPhotos();
+
+            // Export photos NOT in selectedTakes (rejected photos)
+            for (Photo photo : allPhotos) {
+                if (!selectedPhotos.contains(photo)) {
+                    File sourceFile = photo.getFile();
+                    String originalName = sourceFile.getName();
+                    String baseName = getBaseName(originalName);
+                    String extension = getExtension(originalName);
+
+                    // Handle filename collisions
+                    String finalName = originalName;
+                    if (filenameCounts.containsKey(originalName)) {
+                        int count = filenameCounts.get(originalName);
+                        finalName = baseName + "_" + count + extension;
+                        filenameCounts.put(originalName, count + 1);
+                    } else {
+                        filenameCounts.put(originalName, 1);
+                    }
+
+                    File destinationFile = new File(targetFolder, finalName);
+
+                    try {
+                        Files.copy(sourceFile.toPath(), destinationFile.toPath(),
+                                  StandardCopyOption.REPLACE_EXISTING);
+                        logMessage("copied rejected file: " + sourceFile.getAbsolutePath() + " → " + finalName);
+                    } catch (IOException e) {
+                        logMessage("couldn't copy rejected file: " + sourceFile.getAbsolutePath());
+                    }
+                }
+            }
+        }
+    }
+
     private static String getBaseName(String filename) {
         int lastDot = filename.lastIndexOf('.');
         return lastDot > 0 ? filename.substring(0, lastDot) : filename;

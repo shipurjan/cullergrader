@@ -29,6 +29,7 @@ public class CLI {
     // Parsed arguments with defaults from AppConstants
     private String inputPath = null;
     private String outputPath = null;
+    private String rejectedOutputPath = null;
     private String jsonPath = null;
     private float timeThreshold = AppConstants.TIME_THRESHOLD_SECONDS;
     private float similarityThreshold = AppConstants.SIMILARITY_THRESHOLD_PERCENT;
@@ -86,9 +87,24 @@ public class CLI {
             }
         }
 
+        // Validate rejected output directory if provided
+        File rejectedOutputFolder = null;
+        if (rejectedOutputPath != null) {
+            rejectedOutputFolder = new File(rejectedOutputPath);
+            if (rejectedOutputFolder.exists() && !rejectedOutputFolder.isDirectory()) {
+                System.err.println("Error: Rejected output path exists but is not a directory: " + rejectedOutputPath);
+                return EXIT_FAILURE;
+            }
+
+            if (rejectedOutputFolder.exists() && !rejectedOutputFolder.canWrite()) {
+                System.err.println("Error: Cannot write to rejected output directory: " + rejectedOutputPath);
+                return EXIT_FAILURE;
+            }
+        }
+
         // Execute workflow
         try {
-            executeWorkflow(inputFolder, outputFolder);
+            executeWorkflow(inputFolder, outputFolder, rejectedOutputFolder);
             return EXIT_SUCCESS;
         } catch (Exception e) {
             System.err.println("Error: Processing failed - " + e.getMessage());
@@ -122,6 +138,15 @@ public class CLI {
                     return false;
                 }
                 outputPath = args[++i];
+            }
+
+            // Rejected output path
+            else if (arg.equals("--rejected-output") || arg.equals("-r")) {
+                if (i + 1 >= args.length) {
+                    System.err.println("Error: --rejected-output requires a value");
+                    return false;
+                }
+                rejectedOutputPath = args[++i];
             }
 
             // JSON export path
@@ -186,18 +211,23 @@ public class CLI {
      *
      * @param inputFolder Input directory containing photos
      * @param outputFolder Output directory for best takes
+     * @param rejectedOutputFolder Output directory for rejected takes
      */
-    private void executeWorkflow(File inputFolder, File outputFolder) {
+    private void executeWorkflow(File inputFolder, File outputFolder, File rejectedOutputFolder) {
         long startTime = System.currentTimeMillis();
-        boolean previewMode = (outputFolder == null);
+        boolean previewMode = (outputFolder == null && rejectedOutputFolder == null);
 
         // Print configuration header
         System.out.println("Cullergrader CLI");
         System.out.println("================");
         System.out.println("Input:  " + inputFolder.getAbsolutePath());
-        if (!previewMode) {
+        if (outputFolder != null) {
             System.out.println("Output: " + outputFolder.getAbsolutePath());
-        } else {
+        }
+        if (rejectedOutputFolder != null) {
+            System.out.println("Rejected Output: " + rejectedOutputFolder.getAbsolutePath());
+        }
+        if (previewMode) {
             System.out.println("Mode: Preview (no files will be exported)");
         }
         System.out.println("Time threshold: " + timeThreshold + " seconds");
@@ -249,12 +279,22 @@ public class CLI {
                 }
             }
             System.out.println();
-            System.out.println("To export these " + totalSelected + " files, run again with --output <path>");
+            System.out.println("To export selected files, run again with --output <path>");
+            System.out.println("To export rejected files, run again with --rejected-output <path>");
         } else {
-            System.out.println("Exporting best takes to: " + outputFolder.getAbsolutePath());
-            FileUtils.exportBestTakes(groups, outputFolder);
-            System.out.println();
-            System.out.println("Successfully exported " + groups.size() + " files");
+            // Export selected takes
+            if (outputFolder != null) {
+                System.out.println("Exporting best takes to: " + outputFolder.getAbsolutePath());
+                FileUtils.exportBestTakes(groups, outputFolder);
+                System.out.println();
+            }
+
+            // Export rejected takes
+            if (rejectedOutputFolder != null) {
+                System.out.println("Exporting rejected takes to: " + rejectedOutputFolder.getAbsolutePath());
+                FileUtils.exportRejectedTakes(groups, rejectedOutputFolder);
+                System.out.println();
+            }
         }
 
         // Summary
@@ -277,12 +317,13 @@ public class CLI {
         System.out.println("  No arguments launches GUI mode");
         System.out.println();
         System.out.println("OPTIONS:");
-        System.out.println("  -i, --input <path>         Input folder containing photos (required)");
-        System.out.println("  -o, --output <path>        Output folder for best takes (optional, preview mode if omitted)");
-        System.out.println("  -j, --json <path>          Export group information to JSON file (optional)");
-        System.out.println("  -t, --time <seconds>       Time threshold in seconds (default: " + AppConstants.TIME_THRESHOLD_SECONDS + ")");
-        System.out.println("  -s, --similarity <percent> Similarity threshold 0-100 (default: " + AppConstants.SIMILARITY_THRESHOLD_PERCENT + ")");
-        System.out.println("  -h, --help                 Show this help message");
+        System.out.println("  -i, --input <path>            Input folder containing photos (required)");
+        System.out.println("  -o, --output <path>           Output folder for best takes (optional, preview mode if omitted)");
+        System.out.println("  -r, --rejected-output <path>  Output folder for rejected takes (optional)");
+        System.out.println("  -j, --json <path>             Export group information to JSON file (optional)");
+        System.out.println("  -t, --time <seconds>          Time threshold in seconds (default: " + AppConstants.TIME_THRESHOLD_SECONDS + ")");
+        System.out.println("  -s, --similarity <percent>    Similarity threshold 0-100 (default: " + AppConstants.SIMILARITY_THRESHOLD_PERCENT + ")");
+        System.out.println("  -h, --help                    Show this help message");
         System.out.println();
         System.out.println("EXAMPLES:");
         System.out.println("  # Preview mode (no export)");
@@ -290,6 +331,9 @@ public class CLI {
         System.out.println();
         System.out.println("  # Export mode");
         System.out.println("  java -jar cullergrader.jar --input /photos --output /export");
+        System.out.println();
+        System.out.println("  # Export both selected and rejected takes");
+        System.out.println("  java -jar cullergrader.jar -i /photos -o /selected -r /rejected");
         System.out.println();
         System.out.println("  # Export JSON metadata only");
         System.out.println("  java -jar cullergrader.jar --input /photos --json groups.json");
