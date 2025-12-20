@@ -1,6 +1,7 @@
 package com.penguinpush.cullergrader.logic;
 
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 import com.penguinpush.cullergrader.media.*;
 
 import static com.penguinpush.cullergrader.utils.Logger.logMessage;
@@ -11,8 +12,13 @@ import java.util.*;
 import java.io.File;
 
 public class GroupingEngine {
+    private final ExecutionMode mode;
     private final com.penguinpush.cullergrader.expression.SelectionStrategyManager strategyManager =
         new com.penguinpush.cullergrader.expression.SelectionStrategyManager();
+
+    public GroupingEngine(ExecutionMode mode) {
+        this.mode = mode;
+    }
 
     public List<Photo> photoListFromFolder(File folder) {
         File[] imageFiles = folder.listFiles((f) -> f.isFile() && PhotoUtils.isImageFile(f));
@@ -20,7 +26,7 @@ public class GroupingEngine {
             return Collections.emptyList();
         }
 
-        HashManager hashManager = new HashManager();
+        HashManager hashManager = new HashManager(mode);
         List<Photo> photoList = hashManager.hashAllPhotos(imageFiles);
 
         hashManager.saveCache();

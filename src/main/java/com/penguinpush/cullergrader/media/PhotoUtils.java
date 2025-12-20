@@ -4,6 +4,7 @@ import static com.penguinpush.cullergrader.utils.Logger.logMessage;
 import static com.penguinpush.cullergrader.utils.Logger.logToConsoleOnly;
 
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
@@ -74,7 +75,7 @@ public class PhotoUtils {
         }
     }
 
-    public static BufferedImage readLowResImage(File file, int targetWidth, int targetHeight) throws Exception {
+    public static BufferedImage readLowResImage(File file, int targetWidth, int targetHeight, ExecutionMode mode) throws Exception {
         String path = file.getAbsolutePath();
         long lastModified = file.lastModified();
 
@@ -84,6 +85,26 @@ public class PhotoUtils {
             cacheHits.incrementAndGet();  // Track cache hit
             logToConsoleOnly("Retrieved cached preview: " + file.getName());
             return scalePreviewIfNeeded(entry.preview, targetWidth, targetHeight);
+        }
+
+        // CLI mode optimization: Skip expensive preview caching
+        // In CLI mode, we only need the hash-sized image (8×8), not the cached 240×160 preview
+        if (!mode.shouldCacheThumbnails()) {
+            BufferedImage fullImage;
+            if (isRawFile(file)) {
+                fullImage = extractRawPreview(file);
+                if (fullImage == null) {
+                    logToConsoleOnly("Skipping RAW file without embedded preview: " + file.getName());
+                    return null;
+                }
+            } else {
+                fullImage = ImageIO.read(file);
+                if (fullImage == null) {
+                    return null;
+                }
+            }
+            // Return scaled to requested size (8×8 for hashing) WITHOUT caching
+            return scalePreviewIfNeeded(fullImage, targetWidth, targetHeight);
         }
 
         // Cache miss - extract/read image

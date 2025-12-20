@@ -4,6 +4,7 @@ import com.penguinpush.cullergrader.media.*;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 
 import static com.penguinpush.cullergrader.utils.Logger.logMessage;
 
@@ -21,8 +22,10 @@ public class HashManager {
 
     private static final File CACHE_FILE = new File(AppConstants.CACHE_FILE);
     private final Map<String, HashEntry> cache = new HashMap<>();
+    private final ExecutionMode mode;
 
-    public HashManager() {
+    public HashManager(ExecutionMode mode) {
+        this.mode = mode;
         loadCache();
     }
 
@@ -45,7 +48,7 @@ public class HashManager {
                     }
 
                     long timestamp = PhotoUtils.extractTimestamp(file);
-                    Photo photo = new Photo(file, timestamp, hash);
+                    Photo photo = new Photo(file, timestamp, hash, mode);
                     photoList.add(photo);
                 } catch (Exception e) {
                     logMessage("error processing: " + file.getName());
@@ -77,7 +80,7 @@ public class HashManager {
 
         // else, hash the file and return
         try {
-            BufferedImage image = PhotoUtils.readLowResImage(file, AppConstants.HASHED_WIDTH, AppConstants.HASHED_HEIGHT);
+            BufferedImage image = PhotoUtils.readLowResImage(file, AppConstants.HASHED_WIDTH, AppConstants.HASHED_HEIGHT, mode);
             if (image == null) {
                 logMessage("no image at: " + file.getName());
                 throw null;

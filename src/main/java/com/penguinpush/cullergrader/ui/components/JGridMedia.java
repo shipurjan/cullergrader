@@ -4,6 +4,7 @@ import com.penguinpush.cullergrader.logic.ImageLoader;
 import com.penguinpush.cullergrader.media.*;
 import com.penguinpush.cullergrader.ui.*;
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,7 +17,7 @@ public class JGridMedia extends JLabel {
     private Dimension dimensions;
     private String labelText;
     private PhotoGridFrame photoGridFrame;
-    private Photo thumbnailPhoto = new Photo(new File("placeholder.jpg"), 0, "");
+    private Photo thumbnailPhoto = new Photo(new File("placeholder.jpg"), 0, "", ExecutionMode.GUI);
     private ImageLoader imageLoader;
     private boolean isCurrentlyViewed = false;
 

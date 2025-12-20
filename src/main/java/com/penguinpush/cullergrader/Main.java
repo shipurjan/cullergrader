@@ -3,6 +3,7 @@ package com.penguinpush.cullergrader;
 import com.penguinpush.cullergrader.logic.*;
 import com.penguinpush.cullergrader.ui.GroupGridFrame;
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 import com.penguinpush.cullergrader.media.PhotoUtils;
 import javax.swing.SwingUtilities;
 import com.formdev.flatlaf.FlatIntelliJLaf;
@@ -14,7 +15,7 @@ public class Main {
         // Detect CLI mode by checking for CLI-specific arguments
         if (isCLIMode(args)) {
             // CLI mode - skip GUI initialization
-            CLI cli = new CLI();
+            CLI cli = new CLI(ExecutionMode.CLI);
             int exitCode = cli.run(args);
             System.exit(exitCode);
         } else {
@@ -26,7 +27,7 @@ public class Main {
                 FlatIntelliJLaf.setup();
             }
 
-            GroupingEngine groupingEngine = new GroupingEngine();
+            GroupingEngine groupingEngine = new GroupingEngine(ExecutionMode.GUI);
             ImageLoader imageLoader = new ImageLoader();
 
             SwingUtilities.invokeLater(() -> new GroupGridFrame(imageLoader, groupingEngine));

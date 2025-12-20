@@ -1,6 +1,7 @@
 package com.penguinpush.cullergrader.media;
 
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 
 import static com.penguinpush.cullergrader.utils.Logger.logMessage;
 
@@ -18,16 +19,18 @@ public class Photo extends GridMedia {
     private final File file;
     private final long timestamp;
     private final String hash;
+    private final ExecutionMode mode;
     private int grade;
     private PhotoGroup group;
 
     private float deltaTimeRatio;
     private float hammingDistanceRatio;
 
-    public Photo(File file, long timestamp, String hash) {
+    public Photo(File file, long timestamp, String hash, ExecutionMode mode) {
         this.file = file;
         this.timestamp = timestamp;
         this.hash = hash;
+        this.mode = mode;
         this.grade = 0;
     }
 
@@ -64,7 +67,7 @@ public class Photo extends GridMedia {
             int width = AppConstants.THUMBNAIL_ICON_WIDTH;
             int height = AppConstants.THUMBNAIL_ICON_HEIGHT;
 
-            BufferedImage thumbnail = PhotoUtils.readLowResImage(file, width, height);
+            BufferedImage thumbnail = PhotoUtils.readLowResImage(file, width, height, mode);
             if (thumbnail == null) {
                 logMessage("no thumbnail at: " + file.getName());
                 throw null;

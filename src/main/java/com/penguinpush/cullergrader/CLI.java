@@ -3,6 +3,7 @@ package com.penguinpush.cullergrader;
 import com.penguinpush.cullergrader.logic.*;
 import com.penguinpush.cullergrader.media.*;
 import com.penguinpush.cullergrader.config.AppConstants;
+import com.penguinpush.cullergrader.config.ExecutionMode;
 
 import java.io.File;
 import java.util.List;
@@ -17,6 +18,13 @@ public class CLI {
     // Exit codes
     private static final int EXIT_SUCCESS = 0;
     private static final int EXIT_FAILURE = 1;
+
+    // Execution mode
+    private final ExecutionMode mode;
+
+    public CLI(ExecutionMode mode) {
+        this.mode = mode;
+    }
 
     // Parsed arguments with defaults from AppConstants
     private String inputPath = null;
@@ -198,7 +206,7 @@ public class CLI {
 
         // Load and hash photos
         System.out.println("Loading and hashing photos from: " + inputFolder.getAbsolutePath());
-        GroupingEngine engine = new GroupingEngine();
+        GroupingEngine engine = new GroupingEngine(mode);
         List<Photo> photos = engine.photoListFromFolder(inputFolder);
 
         if (photos.isEmpty()) {
