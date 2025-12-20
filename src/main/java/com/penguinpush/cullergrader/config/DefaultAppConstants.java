@@ -1,7 +1,7 @@
 package com.penguinpush.cullergrader.config;
 
 public class DefaultAppConstants {
-    public String VERSION = "1.0.0-fork.4";
+    public String VERSION = "1.0.0-fork.5";
     public boolean DARK_THEME = true;
     public String CACHE_FILE = "cache.json";
     public String LOG_DIRECTORY = "logs";
