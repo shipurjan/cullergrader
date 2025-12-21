@@ -9,7 +9,7 @@ public class DefaultAppConstants {
 
     public boolean HASHING_ENABLED = true;
     public int EXECUTOR_TIMEOUT_MINUTES = 60;
-    public int MAX_THREADS_RATIO = 2;
+    public float MAX_CPU_USAGE = 0.5f;
     public int HASHED_WIDTH = 8;
     public int HASHED_HEIGHT = 8;
     public float TIME_THRESHOLD_SECONDS = 15;

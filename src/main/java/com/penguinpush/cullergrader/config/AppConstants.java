@@ -31,7 +31,7 @@ public class AppConstants {
 
     public static final boolean HASHING_ENABLED = config.HASHING_ENABLED;
     public static final int EXECUTOR_TIMEOUT_MINUTES = config.EXECUTOR_TIMEOUT_MINUTES;
-    public static final int MAX_THREADS_RATIO = config.MAX_THREADS_RATIO;
+    public static final float MAX_CPU_USAGE = config.MAX_CPU_USAGE;
     public static final int HASHED_WIDTH = config.HASHED_WIDTH;
     public static final int HASHED_HEIGHT = config.HASHED_HEIGHT;
     public static final float TIME_THRESHOLD_SECONDS = config.TIME_THRESHOLD_SECONDS;

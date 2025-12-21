@@ -144,7 +144,7 @@ public class FileUtils {
         configMap.put("DEFAULT_FOLDER_PATH", AppConstants.DEFAULT_FOLDER_PATH);
         configMap.put("HASHING_ENABLED", AppConstants.HASHING_ENABLED);
         configMap.put("EXECUTOR_TIMEOUT_MINUTES", AppConstants.EXECUTOR_TIMEOUT_MINUTES);
-        configMap.put("MAX_THREADS_RATIO", AppConstants.MAX_THREADS_RATIO);
+        configMap.put("MAX_CPU_USAGE", AppConstants.MAX_CPU_USAGE);
         configMap.put("HASHED_WIDTH", AppConstants.HASHED_WIDTH);
         configMap.put("HASHED_HEIGHT", AppConstants.HASHED_HEIGHT);
         configMap.put("TIME_THRESHOLD_SECONDS", AppConstants.TIME_THRESHOLD_SECONDS);

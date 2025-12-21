@@ -32,7 +32,8 @@ public class HashManager {
     public List<Photo> hashAllPhotos(File[] files) {
         List<Photo> photoList = Collections.synchronizedList(new ArrayList<>());
 
-        int maxThreads = Math.max(1, Runtime.getRuntime().availableProcessors() / AppConstants.MAX_THREADS_RATIO);
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        int maxThreads = Math.max(1, Math.min((int)(availableProcessors * AppConstants.MAX_CPU_USAGE), availableProcessors - 1));
         ExecutorService executor = Executors.newWorkStealingPool(maxThreads);
 
         for (File file : files) {
