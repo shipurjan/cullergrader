@@ -64,8 +64,8 @@ public class Photo extends GridMedia {
 
     private BufferedImage generateThumbnail(File file) throws Exception {
         try {
-            int width = AppConstants.THUMBNAIL_ICON_WIDTH;
-            int height = AppConstants.THUMBNAIL_ICON_HEIGHT;
+            int width = AppConstants.PREVIEW_WIDTH;
+            int height = AppConstants.PREVIEW_HEIGHT;
 
             BufferedImage thumbnail = PhotoUtils.readLowResImage(file, width, height, mode);
             if (thumbnail == null) {

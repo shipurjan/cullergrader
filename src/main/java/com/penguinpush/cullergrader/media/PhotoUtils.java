@@ -75,77 +75,80 @@ public class PhotoUtils {
         }
     }
 
+    private static boolean isHashSizeRequest(int targetWidth, int targetHeight) {
+        return targetWidth == AppConstants.HASHED_WIDTH
+            && targetHeight == AppConstants.HASHED_HEIGHT;
+    }
+
+    private static BufferedImage loadImage(File file) throws Exception {
+        if (isRawFile(file)) {
+            BufferedImage fullImage = extractRawPreview(file);
+            if (fullImage == null) {
+                logToConsoleOnly("Skipping RAW file without embedded preview: " + file.getName());
+            }
+            return fullImage;
+        } else {
+            return ImageIO.read(file);
+        }
+    }
+
     public static BufferedImage readLowResImage(File file, int targetWidth, int targetHeight, ExecutionMode mode) throws Exception {
         String path = file.getAbsolutePath();
         long lastModified = file.lastModified();
 
-        // Check cache first (for ALL file types - RAW, JPEG, PNG, etc.)
+        boolean isHashRequest = isHashSizeRequest(targetWidth, targetHeight);
+
+        // Check cache - but skip for hash requests to avoid double-scaling
         ImagePreviewEntry entry = imagePreviewCache.get(path);
-        if (entry != null && entry.lastModified == lastModified) {
-            cacheHits.incrementAndGet();  // Track cache hit
+        if (entry != null && entry.lastModified == lastModified && !isHashRequest) {
+            cacheHits.incrementAndGet();
             logToConsoleOnly("Retrieved cached preview: " + file.getName());
             return scalePreviewIfNeeded(entry.preview, targetWidth, targetHeight);
         }
 
-        // CLI mode optimization: Skip expensive preview caching
-        // In CLI mode, we only need the hash-sized image (8×8), not the cached 240×160 preview
+        // CLI mode: Skip all caching
         if (!mode.shouldCacheThumbnails()) {
-            BufferedImage fullImage;
-            if (isRawFile(file)) {
-                fullImage = extractRawPreview(file);
-                if (fullImage == null) {
-                    logToConsoleOnly("Skipping RAW file without embedded preview: " + file.getName());
-                    return null;
-                }
-            } else {
-                fullImage = ImageIO.read(file);
-                if (fullImage == null) {
-                    return null;
-                }
-            }
-            // Return scaled to requested size (8×8 for hashing) WITHOUT caching
+            BufferedImage fullImage = loadImage(file);
+            if (fullImage == null) return null;
             return scalePreviewIfNeeded(fullImage, targetWidth, targetHeight);
         }
 
-        // Cache miss - extract/read image
-        BufferedImage fullImage;
-        if (isRawFile(file)) {
-            // RAW files: Extract embedded JPEG preview
-            fullImage = extractRawPreview(file);
-            if (fullImage == null) {
-                logToConsoleOnly("Skipping RAW file without embedded preview: " + file.getName());
-                return null;
+        // GUI mode: Load original image
+        BufferedImage fullImage = loadImage(file);
+        if (fullImage == null) return null;
+
+        // Hash request: Scale directly from original, but still cache preview for GUI
+        if (isHashRequest) {
+            if (entry == null) {
+                int cacheWidth = AppConstants.PREVIEW_WIDTH;
+                int cacheHeight = AppConstants.PREVIEW_HEIGHT;
+                BufferedImage cachedPreview = scalePreviewIfNeeded(fullImage, cacheWidth, cacheHeight);
+
+                ImagePreviewEntry newEntry = new ImagePreviewEntry(lastModified, cachedPreview);
+                if (currentCacheSizeBytes + newEntry.sizeBytes <= MAX_CACHE_SIZE_BYTES) {
+                    imagePreviewCache.put(path, newEntry);
+                    currentCacheSizeBytes += newEntry.sizeBytes;
+                    logToConsoleOnly("Cached preview for: " + file.getName());
+                }
             }
-        } else {
-            // Regular JPEG/PNG files: Read via ImageIO
-            fullImage = ImageIO.read(file);
-            if (fullImage == null) {
-                return null;
-            }
+
+            cacheMisses.incrementAndGet();
+            return scalePreviewIfNeeded(fullImage, targetWidth, targetHeight);
         }
 
-        // Scale to display resolution and cache (NOT arbitrary size!)
-        // Cache at THUMBNAIL_ICON_WIDTH × THUMBNAIL_ICON_HEIGHT (240×160 default)
-        // This is the display resolution, so thumbnails can use it directly
-        int cacheWidth = AppConstants.THUMBNAIL_ICON_WIDTH;
-        int cacheHeight = AppConstants.THUMBNAIL_ICON_HEIGHT;
+        // Thumbnail request: Standard cache path
+        int cacheWidth = AppConstants.PREVIEW_WIDTH;
+        int cacheHeight = AppConstants.PREVIEW_HEIGHT;
         BufferedImage cachedPreview = scalePreviewIfNeeded(fullImage, cacheWidth, cacheHeight);
 
-        // Store at display resolution (only if space available)
         ImagePreviewEntry newEntry = new ImagePreviewEntry(lastModified, cachedPreview);
-
-        // Simple fill-until-full: only cache if we have space
         if (currentCacheSizeBytes + newEntry.sizeBytes <= MAX_CACHE_SIZE_BYTES) {
             imagePreviewCache.put(path, newEntry);
             currentCacheSizeBytes += newEntry.sizeBytes;
             logToConsoleOnly("Cached preview for: " + file.getName());
-        } else {
-            logToConsoleOnly("Cache full, not caching: " + file.getName());
         }
 
-        cacheMisses.incrementAndGet();  // Track cache miss
-
-        // Return scaled to requested size (e.g., 8×8 for hashing, 240×160 for display)
+        cacheMisses.incrementAndGet();
         return scalePreviewIfNeeded(cachedPreview, targetWidth, targetHeight);
     }
 

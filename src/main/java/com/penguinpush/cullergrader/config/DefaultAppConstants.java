@@ -1,7 +1,7 @@
 package com.penguinpush.cullergrader.config;
 
 public class DefaultAppConstants {
-    public String VERSION = "1.0.0-fork.7";
+    public String VERSION = "1.0.0-fork.8";
     public boolean DARK_THEME = true;
     public String CACHE_FILE = "cache.json";
     public String LOG_DIRECTORY = "logs";
@@ -24,8 +24,8 @@ public class DefaultAppConstants {
     public int GROUP_OFFSCREEN_PRIORITY = 4;
     public int PHOTO_OFFSCREEN_PRIORITY = 4;
 
-    public int THUMBNAIL_ICON_WIDTH = 240;
-    public int THUMBNAIL_ICON_HEIGHT = 160;
+    public int PREVIEW_WIDTH = 240;
+    public int PREVIEW_HEIGHT = 160;
 
     public int GRIDMEDIA_PHOTO_WIDTH = 120;
     public int GRIDMEDIA_PHOTO_HEIGHT = 80;

@@ -46,8 +46,8 @@ public class AppConstants {
     public static final int GROUP_OFFSCREEN_PRIORITY = config.GROUP_OFFSCREEN_PRIORITY;
     public static final int PHOTO_OFFSCREEN_PRIORITY = config.PHOTO_OFFSCREEN_PRIORITY;
 
-    public static final int THUMBNAIL_ICON_WIDTH = config.THUMBNAIL_ICON_WIDTH;
-    public static final int THUMBNAIL_ICON_HEIGHT = config.THUMBNAIL_ICON_HEIGHT;
+    public static final int PREVIEW_WIDTH = config.PREVIEW_WIDTH;
+    public static final int PREVIEW_HEIGHT = config.PREVIEW_HEIGHT;
 
     public static final int GRIDMEDIA_PHOTO_WIDTH = config.GRIDMEDIA_PHOTO_WIDTH;
     public static final int GRIDMEDIA_PHOTO_HEIGHT = config.GRIDMEDIA_PHOTO_HEIGHT;
