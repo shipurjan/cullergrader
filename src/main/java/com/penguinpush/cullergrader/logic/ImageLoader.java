@@ -2,6 +2,7 @@ package com.penguinpush.cullergrader.logic;
 
 import com.penguinpush.cullergrader.config.AppConstants;
 import com.penguinpush.cullergrader.media.Photo;
+import com.penguinpush.cullergrader.media.PhotoUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -36,6 +37,9 @@ public class ImageLoader {
                     image = task.photo.getThumbnail();
                 } else {
                     image = ImageIO.read(task.photo.getFile());
+                    // Apply EXIF rotation for full-size images
+                    int orientation = PhotoUtils.getExifOrientation(task.photo.getFile());
+                    image = PhotoUtils.rotateImageByExif(image, orientation);
                 }
                 task.callback.onImageLoaded(image);
             } catch (Exception e) {

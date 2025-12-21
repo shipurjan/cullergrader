@@ -122,6 +122,17 @@ public class JGridMedia extends JLabel {
             } else {
                 super.paintComponent(g);
             }
+        } else if (gridMedia instanceof Photo) {
+            // Apply 50% opacity to photos that are not selected
+            Photo photo = (Photo) gridMedia;
+            if (!photo.isSelected()) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+                super.paintComponent(g2d);
+                g2d.dispose();
+            } else {
+                super.paintComponent(g);
+            }
         } else {
             super.paintComponent(g);
         }

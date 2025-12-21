@@ -7,9 +7,13 @@ import com.penguinpush.cullergrader.config.AppConstants;
 import com.penguinpush.cullergrader.config.ExecutionMode;
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.drew.metadata.exif.ExifThumbnailDirectory;
+import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -80,6 +84,89 @@ public class PhotoUtils {
             && targetHeight == AppConstants.HASHED_HEIGHT;
     }
 
+    public static int getExifOrientation(File file) {
+        try {
+            Metadata metadata = ImageMetadataReader.readMetadata(file);
+            ExifIFD0Directory exifDirectory = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+            if (exifDirectory != null && exifDirectory.containsTag(ExifIFD0Directory.TAG_ORIENTATION)) {
+                return exifDirectory.getInt(ExifIFD0Directory.TAG_ORIENTATION);
+            }
+        } catch (Exception e) {
+            // No EXIF data or error reading, use default orientation
+        }
+        return 1; // Default: no rotation needed
+    }
+
+    public static BufferedImage rotateImageByExif(BufferedImage image, int orientation) {
+        if (orientation == 1 || image == null) {
+            return image; // No rotation needed
+        }
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        // For rotations that swap dimensions (90 or 270 degrees)
+        int newWidth = (orientation >= 5 && orientation <= 8) ? height : width;
+        int newHeight = (orientation >= 5 && orientation <= 8) ? width : height;
+
+        // Use TYPE_INT_RGB for most images, TYPE_INT_ARGB if transparency is needed
+        int imageType = BufferedImage.TYPE_INT_RGB;
+        if (image.getTransparency() != BufferedImage.OPAQUE) {
+            imageType = BufferedImage.TYPE_INT_ARGB;
+        }
+
+        BufferedImage rotatedImage = new BufferedImage(newWidth, newHeight, imageType);
+        Graphics2D g2d = rotatedImage.createGraphics();
+
+        // Enable high-quality rendering
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        AffineTransform transform = new AffineTransform();
+
+        switch (orientation) {
+            case 2: // Flip horizontally
+                transform.scale(-1.0, 1.0);
+                transform.translate(-width, 0);
+                break;
+            case 3: // Rotate 180 degrees
+                transform.translate(width, height);
+                transform.rotate(Math.PI);
+                break;
+            case 4: // Flip vertically
+                transform.scale(1.0, -1.0);
+                transform.translate(0, -height);
+                break;
+            case 5: // Flip horizontally and rotate 90 CW
+                transform.rotate(Math.PI / 2);
+                transform.scale(-1.0, 1.0);
+                break;
+            case 6: // Rotate 90 CW
+                transform.translate(height, 0);
+                transform.rotate(Math.PI / 2);
+                break;
+            case 7: // Flip horizontally and rotate 90 CCW
+                transform.scale(-1.0, 1.0);
+                transform.translate(-height, 0);
+                transform.translate(0, width);
+                transform.rotate(3 * Math.PI / 2);
+                break;
+            case 8: // Rotate 90 CCW
+                transform.translate(0, width);
+                transform.rotate(3 * Math.PI / 2);
+                break;
+            default:
+                g2d.dispose();
+                return image;
+        }
+
+        g2d.drawImage(image, transform, null);
+        g2d.dispose();
+
+        return rotatedImage;
+    }
+
     private static BufferedImage loadImage(File file) throws Exception {
         if (isRawFile(file)) {
             BufferedImage fullImage = extractRawPreview(file);
@@ -110,12 +197,18 @@ public class PhotoUtils {
         if (!mode.shouldCacheThumbnails()) {
             BufferedImage fullImage = loadImage(file);
             if (fullImage == null) return null;
+            // Apply EXIF rotation
+            int orientation = getExifOrientation(file);
+            fullImage = rotateImageByExif(fullImage, orientation);
             return scalePreviewIfNeeded(fullImage, targetWidth, targetHeight);
         }
 
         // GUI mode: Load original image
         BufferedImage fullImage = loadImage(file);
         if (fullImage == null) return null;
+        // Apply EXIF rotation
+        int orientation = getExifOrientation(file);
+        fullImage = rotateImageByExif(fullImage, orientation);
 
         // Hash request: Scale directly from original, but still cache preview for GUI
         if (isHashRequest) {
@@ -223,7 +316,15 @@ public class PhotoUtils {
 
             // Decode the JPEG thumbnail
             ByteArrayInputStream bais = new ByteArrayInputStream(thumbnailBytes);
-            return ImageIO.read(bais);
+            BufferedImage preview = ImageIO.read(bais);
+
+            // Apply EXIF rotation to RAW preview
+            if (preview != null) {
+                int orientation = getExifOrientation(file);
+                preview = rotateImageByExif(preview, orientation);
+            }
+
+            return preview;
 
         } catch (Exception e) {
             logToConsoleOnly("Failed to extract preview from RAW file: " + file.getName() + " - " + e.getMessage());
