@@ -1,7 +1,7 @@
 package com.penguinpush.cullergrader.config;
 
 public class DefaultAppConstants {
-    public String VERSION = "1.0.0-fork.8";
+    public String VERSION = "1.0.0-fork.9";
     public boolean DARK_THEME = true;
     public String CACHE_FILE = "cache.json";
     public String LOG_DIRECTORY = "logs";
@@ -36,6 +36,8 @@ public class DefaultAppConstants {
 
     public int SCROLL_BAR_INCREMENT = 20;
     public String PLACEHOLDER_THUMBNAIL_PATH = "placeholder.jpg";
+    public int PHOTO_CACHE_WINDOW_SIZE = 2;
+    public int PHOTO_LRU_CACHE_SIZE = 5;
 
     public float GRIDMEDIA_LABEL_FONT_SIZE = 14f;
     public int GRIDMEDIA_LABEL_HEIGHT = 20;

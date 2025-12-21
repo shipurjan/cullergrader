@@ -38,6 +38,12 @@ public class JImagePanel extends JPanel {
         repaint();
     }
 
+    public void setPhotoAndImage(Photo photo, BufferedImage image) {
+        this.photo = photo;
+        this.image = image;
+        repaint();
+    }
+
     public Photo getPhoto() {
         return photo;
     }

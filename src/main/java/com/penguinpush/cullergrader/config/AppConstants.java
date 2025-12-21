@@ -58,6 +58,8 @@ public class AppConstants {
 
     public static final int SCROLL_BAR_INCREMENT = config.SCROLL_BAR_INCREMENT;
     public static final String PLACEHOLDER_THUMBNAIL_PATH = config.PLACEHOLDER_THUMBNAIL_PATH;
+    public static final int PHOTO_CACHE_WINDOW_SIZE = config.PHOTO_CACHE_WINDOW_SIZE;
+    public static final int PHOTO_LRU_CACHE_SIZE = config.PHOTO_LRU_CACHE_SIZE;
 
     public static final float GRIDMEDIA_LABEL_FONT_SIZE = config.GRIDMEDIA_LABEL_FONT_SIZE;
     public static final int GRIDMEDIA_LABEL_HEIGHT = config.GRIDMEDIA_LABEL_HEIGHT;

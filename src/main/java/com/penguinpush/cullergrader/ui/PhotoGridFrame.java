@@ -5,6 +5,7 @@ import com.penguinpush.cullergrader.logic.ImageLoader;
 import com.penguinpush.cullergrader.media.*;
 
 import java.awt.image.BufferedImage;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +18,7 @@ public class PhotoGridFrame extends JFrame {
     List<PhotoGroup> photoGroups;
     private GroupGridFrame groupGridFrame;
     private final Map<Photo, BufferedImage> thumbnailCache = new ConcurrentHashMap<>();
+    private final LinkedHashSet<Photo> recentlyAccessedPhotos = new LinkedHashSet<>();
     private ImageLoader imageLoader;
 
     public PhotoGridFrame(List<PhotoGroup> photoGroups, GroupGridFrame groupGridFrame, ImageLoader imageLoader) {
@@ -32,6 +34,21 @@ public class PhotoGridFrame extends JFrame {
         int width = AppConstants.GRIDMEDIA_PHOTO_WIDTH;
         int height = AppConstants.GRIDMEDIA_PHOTO_HEIGHT;
 
+        // Save photos from the new group before clearing cache
+        Map<Photo, BufferedImage> savedPhotos = new ConcurrentHashMap<>();
+        for (Photo photo : photoGroup.getPhotos()) {
+            if (thumbnailCache.containsKey(photo)) {
+                savedPhotos.put(photo, thumbnailCache.get(photo));
+            }
+        }
+
+        // Clear caches when switching groups
+        thumbnailCache.clear();
+        recentlyAccessedPhotos.clear();
+
+        // Restore saved photos from the new group
+        thumbnailCache.putAll(savedPhotos);
+
         this.photoGroup = photoGroup;
         jGridPanel.populateGrid((List<GridMedia>) (List<? extends GridMedia>) photoGroup.getPhotos(), width, height, AppConstants.PHOTO_OFFSCREEN_PRIORITY);
         jGridPanel.updatePriorities(AppConstants.PHOTO_ONSCREEN_PRIORITY, AppConstants.PHOTO_OFFSCREEN_PRIORITY);
@@ -43,7 +60,13 @@ public class PhotoGridFrame extends JFrame {
 
         if (photoToShow != null) {
             setImagePanelPhoto(photoToShow);
+            // Preload nearby photos when group opens
+            preloadNearbyPhotos(photoToShow, AppConstants.PHOTO_CACHE_WINDOW_SIZE);
         }
+
+        // Preload first photo of adjacent groups (lower priority)
+        preloadAdjacentGroups();
+
         setVisible(true);
     }
 
@@ -110,15 +133,140 @@ public class PhotoGridFrame extends JFrame {
         toggleSelection();
     }
 
+    private void preloadNearbyPhotos(Photo currentPhoto, int windowSize) {
+        if (photoGroup == null || photoGroup.getPhotos().isEmpty() || currentPhoto == null) {
+            return;
+        }
+
+        int currentIndex = currentPhoto.getIndex();
+        int groupSize = photoGroup.getSize();
+        int startIndex = Math.max(0, currentIndex - windowSize);
+        int endIndex = Math.min(groupSize - 1, currentIndex + windowSize);
+
+        for (int i = startIndex; i <= endIndex; i++) {
+            Photo photo = photoGroup.getPhotos().get(i);
+
+            // Skip if already in cache
+            if (thumbnailCache.containsKey(photo)) {
+                continue;
+            }
+
+            // Determine priority: MAX_PRIORITY for current photo, IMAGE_PRIORITY for nearby photos
+            int priority = photo.equals(currentPhoto) ? AppConstants.MAX_PRIORITY : AppConstants.IMAGE_PRIORITY;
+
+            // Load full image and cache it
+            imageLoader.loadImage(photo, priority, true, (imageFullRes) -> {
+                thumbnailCache.put(photo, imageFullRes);
+            });
+        }
+    }
+
+    private void evictOutOfWindowPhotos(Photo currentPhoto, int windowSize) {
+        if (photoGroup == null || currentPhoto == null || photoGroups == null) {
+            return;
+        }
+
+        int currentIndex = currentPhoto.getIndex();
+        int startIndex = Math.max(0, currentIndex - windowSize);
+        int endIndex = Math.min(photoGroup.getSize() - 1, currentIndex + windowSize);
+
+        int currentGroupIndex = photoGroup.getIndex();
+        int startGroupIndex = Math.max(0, currentGroupIndex - windowSize);
+        int endGroupIndex = Math.min(photoGroups.size() - 1, currentGroupIndex + windowSize);
+
+        // Remove photos outside the window, but preserve recently accessed photos
+        thumbnailCache.keySet().removeIf(photo -> {
+            // Check if photo belongs to current group
+            boolean isFromCurrentGroup = photoGroup.getPhotos().contains(photo);
+
+            if (isFromCurrentGroup) {
+                // For photos in current group, evict if outside window and not recently accessed
+                int photoIndex = photo.getIndex();
+                boolean isOutsideWindow = photoIndex < startIndex || photoIndex > endIndex;
+                boolean isRecentlyAccessed = recentlyAccessedPhotos.contains(photo);
+                return isOutsideWindow && !isRecentlyAccessed;
+            } else {
+                // For photos from other groups, check if they're from groups within the window
+                // Find which group this photo belongs to
+                for (int i = 0; i < photoGroups.size(); i++) {
+                    PhotoGroup group = photoGroups.get(i);
+                    if (group.getPhotos().contains(photo)) {
+                        // Evict if group is outside the ±windowSize range
+                        return i < startGroupIndex || i > endGroupIndex;
+                    }
+                }
+                // If we can't find the group, evict it (safety fallback)
+                return true;
+            }
+        });
+    }
+
+    private void trackPhotoAccess(Photo photo) {
+        // Remove if already present (to update order)
+        recentlyAccessedPhotos.remove(photo);
+        // Add to end (most recent)
+        recentlyAccessedPhotos.add(photo);
+
+        // Trim to LRU cache size by removing oldest entries
+        while (recentlyAccessedPhotos.size() > AppConstants.PHOTO_LRU_CACHE_SIZE) {
+            Photo oldest = recentlyAccessedPhotos.iterator().next();
+            recentlyAccessedPhotos.remove(oldest);
+        }
+    }
+
+    private void preloadAdjacentGroups() {
+        if (photoGroup == null || photoGroups == null) {
+            return;
+        }
+
+        int currentGroupIndex = photoGroup.getIndex();
+        int windowSize = AppConstants.PHOTO_CACHE_WINDOW_SIZE;
+
+        // Preload first photos of previous groups (up to windowSize groups back)
+        int startGroupIndex = Math.max(0, currentGroupIndex - windowSize);
+        for (int i = startGroupIndex; i < currentGroupIndex; i++) {
+            PhotoGroup group = photoGroups.get(i);
+            if (!group.getPhotos().isEmpty()) {
+                Photo firstPhoto = group.getPhotos().get(0);
+                if (!thumbnailCache.containsKey(firstPhoto)) {
+                    imageLoader.loadImage(firstPhoto, AppConstants.GROUP_ONSCREEN_PRIORITY, true, (imageFullRes) -> {
+                        thumbnailCache.put(firstPhoto, imageFullRes);
+                    });
+                }
+            }
+        }
+
+        // Preload first photos of next groups (up to windowSize groups forward)
+        int endGroupIndex = Math.min(photoGroups.size() - 1, currentGroupIndex + windowSize);
+        for (int i = currentGroupIndex + 1; i <= endGroupIndex; i++) {
+            PhotoGroup group = photoGroups.get(i);
+            if (!group.getPhotos().isEmpty()) {
+                Photo firstPhoto = group.getPhotos().get(0);
+                if (!thumbnailCache.containsKey(firstPhoto)) {
+                    imageLoader.loadImage(firstPhoto, AppConstants.GROUP_ONSCREEN_PRIORITY, true, (imageFullRes) -> {
+                        thumbnailCache.put(firstPhoto, imageFullRes);
+                    });
+                }
+            }
+        }
+    }
+
     public void setImagePanelPhoto(Photo photo) {
         if (thumbnailCache.containsKey(photo)) {
-            jImagePanel.setImage(thumbnailCache.get(photo));
+            jImagePanel.setPhotoAndImage(photo, thumbnailCache.get(photo));
         } else {
             SwingUtilities.invokeLater(() -> jImagePanel.setPhoto(photo));
         }
 
         // Update border highlighting for currently viewed photo
         jGridPanel.setCurrentlyViewedPhoto(photo);
+
+        // Track this photo as recently accessed for LRU cache
+        trackPhotoAccess(photo);
+
+        // Preload nearby photos and evict photos outside the window
+        preloadNearbyPhotos(photo, AppConstants.PHOTO_CACHE_WINDOW_SIZE);
+        evictOutOfWindowPhotos(photo, AppConstants.PHOTO_CACHE_WINDOW_SIZE);
     }
 
     @Override
