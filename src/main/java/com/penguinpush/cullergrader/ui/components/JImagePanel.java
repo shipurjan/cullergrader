@@ -53,6 +53,15 @@ public class JImagePanel extends JPanel {
         super.paintComponent(g);
         if (image == null) return;
 
+        // Cast to Graphics2D and enable high-quality rendering
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                             RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING,
+                             RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                             RenderingHints.VALUE_ANTIALIAS_ON);
+
         int panelWidth = getWidth();
         int panelHeight = getHeight();
         int imgWidth = image.getWidth();
@@ -76,6 +85,6 @@ public class JImagePanel extends JPanel {
         int x = (panelWidth - drawWidth) / 2;
         int y = (panelHeight - drawHeight) / 2;
 
-        g.drawImage(image, x, y, drawWidth, drawHeight, this);
+        g2d.drawImage(image, x, y, drawWidth, drawHeight, this);
     }
 }
